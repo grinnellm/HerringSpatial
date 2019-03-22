@@ -61,7 +61,7 @@ if( region %in% list.files() ) {
 # Get data from the data summary
 LoadSavedObjects <- function( loc ) {
   # Load the saved object
-  load( file=file.path("..", "..", "..", "..", "Git", "DataSummaries", loc,
+  load( file=file.path("..", "DataSummaries", loc,
     paste("Image.", loc, ".RData", sep="")) )
   # load( file=file.path("Data", paste("Image.", loc, ".RData", sep="")) )
   # Confirm the region (from the saved data -- should match!)
@@ -305,12 +305,12 @@ npAgedYear <- bio %>%
 #   arrange( Year, SpUnit, Age )
 
 # Calculate weight-at-age by year and area
-# weightAge <- bio %>%
-#   group_by( SpUnit ) %>%
-#   do( CalcWeightAtAge(.) ) %>%
-#   ungroup( ) %>%
-#   select( Year, SpUnit, Age, Weight ) %>%
-#   arrange( Year, SpUnit, Age )
+weightAge <- bio %>%
+  group_by( SpUnit ) %>%
+  do( CalcWeightAtAge(.) ) %>%
+  ungroup( ) %>%
+  select( Year, SpUnit, Age, Weight ) %>%
+  arrange( Year, SpUnit, Age )
 
 # Calculate running mean weight-at-age by year (if data exist)
 if( exists("weightAge") )
@@ -321,12 +321,12 @@ if( exists("weightAge") )
   mutate( Age=factor(Age) )
 
 # Calculate length-at-age by year and area
-# lengthAge <- bio %>%
-#   group_by( SpUnit ) %>%
-#   do( CalcLengthAtAge(.) ) %>%
-#   ungroup( ) %>%
-#   select( Year, SpUnit, Age, Length ) %>%
-#   arrange( Year, SpUnit, Age )
+lengthAge <- bio %>%
+  group_by( SpUnit ) %>%
+  do( CalcLengthAtAge(.) ) %>%
+  ungroup( ) %>%
+  select( Year, SpUnit, Age, Length ) %>%
+  arrange( Year, SpUnit, Age )
 
 # Calculate running mean length-at-age by year (if data exist)
 if( exists("lengthAge") )
@@ -1024,12 +1024,14 @@ siPlot <- ggplot( data=allYrSp, #filter(allYrSp, !is.na(Survey)),
   geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
   geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
-  scale_y_continuous( labels=function(x) comma(x/1000) ) +
+  scale_y_continuous( labels=comma ) +
+  # scale_y_continuous( labels=function(x) comma(x/1000) ) +
   # scale_colour_manual( values=c("black", "red"), guide=FALSE ) +
   # geom_hline( data=refBiomass, aes(yintercept=MeanSI), linetype="dashed", 
   #     size=0.5, colour="red" ) +
   # labs( y=expression(paste("Spawning biomass (t"%*%10^3, ")", sep="")) ) +
-  labs( y=expression(paste("Spawn index (t"%*%10^3, ")", sep="")) ) +
+  # labs( y=expression(paste("Spawn index (t"%*%10^3, ")", sep="")) ) +
+  labs( y="Spawn index (t)" ) +
   expand_limits( x=yrRange ) +
   myTheme +
   facet_grid( SpUnit ~ ., scales="free_y" ) +

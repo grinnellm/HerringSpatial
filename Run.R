@@ -54,7 +54,7 @@ UsePackages( pkgs=c("tidyverse", "sp", "scales", "ggforce", "lubridate",
 ##### Controls #####
 
 # Select region(s): major (HG, PRD, CC, SoG, WCVI); or minor (A27, A2W)
-spRegions <- c("CC" )
+spRegions <- c( "HG", "A2W" )
 
 # File name for dive transect XY
 diveFN <- file.path( "Data", "dive_transects_with_lat_long_June2_2017.xlsx" )
@@ -103,7 +103,7 @@ pDPI <- 600
 ##### Functions #####
 
 # Load helper functions
-source( file=file.path("..", "models", "Functions.R") )
+source( file=file.path("..", "HerringFunctions", "Functions.R") )
 
 # Latex bold (e.g., for table column names)
 boldLatex <- function( x )  paste( '\\textbf{', x, '}', sep ='' )
@@ -156,11 +156,11 @@ for( reg in 1:length(spRegions) ) {
   # Spatial unit: Region, StatArea, Section, or Group
   if( region == "HG" )   spUnitName <- "Section"
   if( region == "PRD" )   spUnitName <- "StatArea"
-  if( region == "CC" )   spUnitName <- "Section"
+  if( region == "CC" )   spUnitName <- "Group"
   if( region == "SoG" )   spUnitName <- "Region"
   if( region == "WCVI" )  spUnitName <- "StatArea"
   if( region == "A27" )   spUnitName <- "StatArea"
-  if( region == "A2W" )   spUnitName <- "Section"
+  if( region == "A2W" )   spUnitName <- "Group"
   # Extract reference years for required region
   refYrs <- refYrsAll %>%
       filter( SAR==region )
