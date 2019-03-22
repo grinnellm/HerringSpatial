@@ -154,9 +154,9 @@ for( reg in 1:length(spRegions) ) {
   # Get the ith region
   region <- spRegions[reg]
   # Spatial unit: Region, StatArea, Section, or Group
-  if( region == "HG" )   spUnitName <- "Section"
+  if( region == "HG" )    spUnitName <- "Section"
   if( region == "PRD" )   spUnitName <- "StatArea"
-  if( region == "CC" )   spUnitName <- "Group"
+  if( region == "CC" )    spUnitName <- "Group"
   if( region == "SoG" )   spUnitName <- "Region"
   if( region == "WCVI" )  spUnitName <- "StatArea"
   if( region == "A27" )   spUnitName <- "StatArea"
