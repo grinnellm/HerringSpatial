@@ -174,8 +174,6 @@ for( reg in 1:length(spRegions) ) {
   source( file="SpatialAnalysis.R" )
 }  # End reg loop over region(s)
 
-##### Figures #####
-
 ##### Tables #####
 
 # Write q parameters

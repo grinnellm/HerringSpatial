@@ -206,10 +206,22 @@ siAll <- GetSI( allSI=spawnRaw, loc=region, XY=transectXY )
 ##### Main ##### 
 
 # Rename variables to set spatial resolution
-areas <- rename_( .data=areas, SpUnit=spUnitName )
-bio <- rename_( .data=bio, SpUnit=spUnitName )
-catch <- rename_( .data=catch, SpUnit=spUnitName )
-siAll <- rename_ (.data=siAll, SpUnit=spUnitName )
+areas <- areas %>%
+  mutate( Section=formatC(Section, width=3, flag="0"),
+    StatArea=formatC(StatArea, width=2, flag="0") ) %>%
+  rename_( SpUnit=spUnitName )
+bio <- bio %>%
+  mutate( Section=formatC(Section, width=3, flag="0"),
+    StatArea=formatC(StatArea, width=2, flag="0") ) %>%
+  rename_( SpUnit=spUnitName )
+catch <- catch %>%
+  mutate( Section=formatC(Section, width=3, flag="0"),
+    StatArea=formatC(StatArea, width=2, flag="0") ) %>%
+  rename_( SpUnit=spUnitName )
+siAll <- siAll %>%
+  mutate( Section=formatC(Section, width=3, flag="0"),
+    StatArea=formatC(StatArea, width=2, flag="0") ) %>%
+  rename_ (SpUnit=spUnitName )
 
 # Aggregate catch by year and spatial unit
 catchYrSp <- catch %>%
@@ -648,7 +660,7 @@ PlotNumSample <- ggplot( data=numAge, aes(x=Year, y=nAged) ) +
   geom_bar( stat="identity", fill="grey" ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   scale_y_continuous( labels=comma ) +
-  labs( y="Number of biological samples" ) +
+  labs( y="Number of biological samples (fish)" ) +
   facet_wrap( ~ SpUnit, ncol=1 ) +
   myTheme + 
   ggsave( filename=file.path(region, "NumSample.png"), width=figWidth, 
@@ -1031,7 +1043,7 @@ siPlot <- ggplot( data=allYrSp, #filter(allYrSp, !is.na(Survey)),
   #     size=0.5, colour="red" ) +
   # labs( y=expression(paste("Spawning biomass (t"%*%10^3, ")", sep="")) ) +
   # labs( y=expression(paste("Spawn index (t"%*%10^3, ")", sep="")) ) +
-  labs( y="Spawn index (t)" ) +
+  labs( y="Spawn index and catch (t)" ) +
   expand_limits( x=yrRange ) +
   myTheme +
   facet_grid( SpUnit ~ ., scales="free_y" ) +
@@ -1168,7 +1180,7 @@ effHarvPlot <- ggplot( data=allYrSp, aes(x=Year, y=HarvestMedian) ) +
   annotate( geom="segment", x=intendUYrs, y=intendU, xend=max(yrRange), 
     yend=intendU, linetype="dashed" ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
-  labs( y="Effective harvest rate" ) +
+  labs( y="Effective harvest rate [catch/(catch+biomass)]" ) +
   facet_grid( SpUnit ~ . ) +
   expand_limits( x=yrRange ) +
   myTheme +
