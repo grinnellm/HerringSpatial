@@ -78,11 +78,13 @@ LoadSavedObjects <- function( loc ) {
   UpdateCatchData <<- UpdateCatchData  # Function to update catch data
   CalcWeightAtAge <<- CalcWeightAtAge  # Function to calculate weight-at-age
   CalcLengthAtAge <<- CalcLengthAtAge  # Function to calculate length-at-age
+  CalcBiomassSOK <<- CalcBiomassSOK  #  Function to calculate biomass from SOK
   inclTestCatch <<- inclTestCatch  # Include catch from test fishery
   geoProj <<- geoProj  # Text for maps: projection
   areas <<- areas  # Spatial info
   bio <<- bio  # Biological data
   spawnRaw <<- spawnRaw  # Spawn data
+  catchRaw <<- catchRaw  # Raw catch data (for SOK harvest)
   ciLevel <<- ciLevel  # Confidence interval
   ageRange <<- ageRange  # Ages
   qYrs <<- qYrs  # Survey years (q1 and q2)
@@ -90,6 +92,9 @@ LoadSavedObjects <- function( loc ) {
   nRoll <<- nRoll  # Number of years for rolling mean
   ageShow <<- ageShow  # Age to highlight on the x-at-age plots
   yrBreaks <<- yrBreaks  # Years to show in x-axes
+  convFac <<- convFac  # Unit conversion factors
+  parsProd <<- parsProd  # Productivity parameters
+  ECF <<- ECF  # Egg conversion factor
 }  # End LoadSavedObjects function
 
 # Load saved data (directly!)
@@ -203,7 +208,29 @@ GetSI <- function( allSI, loc, XY ) {
 # Get spawn index
 siAll <- GetSI( allSI=spawnRaw, loc=region, XY=transectXY )
 
+# Load privacy data if required
+if( region == "HG" & spUnitName %in% c("Section", "Region") ) {
+  # Load the data
+  privCatchDat <- read_csv( 
+    file=paste("CatchPrivacy", spUnitName, region, ".csv", sep=""),
+    col_types=cols() ) %>%
+    # rename_( SpUnit=spUnitName ) %>%
+    mutate( PrivCatch=TRUE )
+}  # End if loading catch privacy data
+
 ##### Main ##### 
+
+# Deal with privacy issues for catch data (if any)
+if( exists("privCatchDat") ) {
+  # Identify which catch values are private (TRUE)
+  catch <- catch %>%
+    full_join( y=privCatchDat ) %>%
+    replace_na( replace=list(PrivCatch=FALSE) )
+} else {  # End if privacy issues, otherwise
+  # Add a dummy column
+  catch <- catch %>%
+    mutate( PrivCatch=FALSE )
+}  # End if no privacy issues
 
 # Rename variables to set spatial resolution
 areas <- areas %>%
@@ -218,18 +245,43 @@ catch <- catch %>%
   mutate( Section=formatC(Section, width=3, flag="0"),
     StatArea=formatC(StatArea, width=2, flag="0") ) %>%
   rename_( SpUnit=spUnitName )
+catchRaw <- catchRaw %>%
+  mutate( Section=formatC(Section, width=3, flag="0"),
+    StatArea=formatC(StatArea, width=2, flag="0") ) %>%
+  rename_( SpUnit=spUnitName )
 siAll <- siAll %>%
   mutate( Section=formatC(Section, width=3, flag="0"),
     StatArea=formatC(StatArea, width=2, flag="0") ) %>%
-  rename_ (SpUnit=spUnitName )
+  rename_(SpUnit=spUnitName )
 
 # Aggregate catch by year and spatial unit
 catchYrSp <- catch %>%
   group_by( Year, SpUnit ) %>%
-  summarise( Catch=SumNA(Catch) ) %>%
+  summarise( Catch=SumNA(Catch), PrivCatch=unique(PrivCatch) ) %>%
   ungroup( ) %>%
   complete( Year, SpUnit ) %>%
-  arrange( Year, SpUnit ) 
+  arrange( Year, SpUnit ) %>%
+  mutate( CatchShow=ifelse(PrivCatch, 0, Catch) )
+
+# Aggregate SOK harvest by year and spatial unit
+harvYrSp <- catchRaw %>%
+  filter( DisposalCode == 2, Source=="SOK" ) %>%
+  group_by( Year, SpUnit ) %>%
+  summarise( HarvSOK=SumNA(Catch) ) %>%
+  ungroup( ) %>%
+  # Covert harvest (lb) to spawning biomass (t)
+  mutate( BiomassSOK=CalcBiomassSOK(SOK=HarvSOK*convFac$lb2kg, 
+    eggKelpProp=parsProd$eggKelpProp, 
+    eggBrineProp=parsProd$eggBrineProp, 
+    eggWt=parsProd$eggWt, ECF=ECF),
+    HarvKgSOK=HarvSOK*convFac$lb2kg ) %>%
+  # complete( Year=yrRange, fill=list(Harvest=0, Biomass=0) ) %>%
+  arrange( Year, SpUnit )
+
+# Add SOK harvest to catch table
+catchYrSp <- catchYrSp %>%
+  full_join( y=harvYrSp, by=c("Year", "SpUnit") ) %>%
+  arrange( Year, SpUnit )
 
 # Update years (use the same year to compare timing among years)
 year( siAll$Start ) <- 0000
@@ -284,7 +336,7 @@ siYrSp <- siAll %>%
 
 # Combine catch with spawn index by year and spatial unit
 allYrSp <- full_join( x=catchYrSp, y=siYrSp, by=c("Year", "SpUnit") ) %>%
-  complete( Year=yrRange, fill=list(Catch=0, SITotal=0) ) %>%
+  # complete( Year=yrRange, fill=list(Catch=0, SITotal=0) ) %>%
   arrange( Year, SpUnit ) %>%
   mutate( Survey=ifelse(Year < newSurvYr, "Surface", "Dive") ) %>%
   replace_na( replace=list(NConsec=-1) ) %>%
@@ -1057,7 +1109,9 @@ siPlotBase <- siPlot +
 
 # Spawn index plot: with catch
 siPlotCatch <- siPlot +
-  geom_col( aes(y=Catch), alpha=0.5 ) +
+  geom_col( data=filter(allYrSp, !PrivCatch), aes(y=Catch), alpha=0.5 ) +
+  geom_point( data=filter(allYrSp, PrivCatch, !is.na(Catch)), 
+    aes(y=CatchShow), shape=8 ) +
   ggsave( filename=file.path(region, "SpawnIndexCatch.png"), 
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
     width=figWidth )
@@ -1067,6 +1121,13 @@ siPlotCatch1972 <- siPlot +
   geom_col( data=filter(allYrSp, !is.na(Survey), Year>=1972), aes(y=Catch), 
     alpha=0.5 ) +
   ggsave( filename=file.path(region, "SpawnIndexCatch1972.png"), 
+    height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
+    width=figWidth )
+
+# Spawn index plot with SOK harvest
+siPlotHarv <- siPlot + 
+  geom_col( aes(y=HarvSOK), alpha=0.5 ) +
+  ggsave( filename=file.path(region, "SpawnIndexHarv.png"), 
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
     width=figWidth )
 
@@ -1218,6 +1279,14 @@ siOut <- siYrSp %>%
   mutate( PropSI=formatC(PropSI, digits=3, format="f") ) %>%
   spread( key=SpUnit, value=PropSI ) %>%
   write_csv( path=file.path(region, "SpawnIndexProp.csv") )
+
+# Catches with privacy issues
+catchPrivOut <- allYrSp %>%
+  filter( PrivCatch, !is.na(Catch) ) %>%
+  select( SpUnit, Year, Catch ) %>%
+  mutate( Catch=round(Catch, 3) ) %>%
+  arrange( SpUnit, Year ) %>%
+  write_csv( path=file.path(region, "CatchPrivacy.csv") )
 
 ##### End ##### 
 
