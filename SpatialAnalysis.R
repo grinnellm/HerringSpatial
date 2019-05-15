@@ -321,7 +321,7 @@ siYrSp <- siAll %>%
   group_by( SpUnit ) %>%
   mutate( NConsec=CountConsecutive(Year) ) %>%
   ungroup( ) %>%
-  complete( Year, SpUnit ) %>%
+  complete( Year=yrRange, SpUnit ) %>%
   arrange( Year, SpUnit ) %>%
   left_join( y=qParsSub, by="Survey" ) %>%
   mutate( BiomassLower=SITotal/qUpper, BiomassMedian=SITotal/qMedian,
@@ -1095,7 +1095,6 @@ siPlot <- ggplot( data=allYrSp, #filter(allYrSp, !is.na(Survey)),
   #     size=0.5, colour="red" ) +
   # labs( y=expression(paste("Spawning biomass (t"%*%10^3, ")", sep="")) ) +
   # labs( y=expression(paste("Spawn index (t"%*%10^3, ")", sep="")) ) +
-  labs( y="Spawn index and catch (t)" ) +
   expand_limits( x=yrRange ) +
   myTheme +
   facet_grid( SpUnit ~ ., scales="free_y" ) +
@@ -1103,12 +1102,14 @@ siPlot <- ggplot( data=allYrSp, #filter(allYrSp, !is.na(Survey)),
 
 # Spawn index plot: basic
 siPlotBase <- siPlot +
+  labs( y="Spawn index (t)" ) +
   ggsave( filename=file.path(region, "SpawnIndex.png"), 
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
     width=figWidth )
 
 # Spawn index plot: with catch
 siPlotCatch <- siPlot +
+  labs( y="Spawn index and catch (t)" ) +
   geom_col( data=filter(allYrSp, !PrivCatch), aes(y=Catch), alpha=0.5 ) +
   geom_point( data=filter(allYrSp, PrivCatch, !is.na(Catch)), 
     aes(y=CatchShow), shape=8 ) +
@@ -1118,15 +1119,22 @@ siPlotCatch <- siPlot +
 
 # Spawn index plot: with catch >= 1972
 siPlotCatch1972 <- siPlot +
+  labs( y="Spawn index and catch (t)" ) +
   geom_col( data=filter(allYrSp, !is.na(Survey), Year>=1972), aes(y=Catch), 
     alpha=0.5 ) +
   ggsave( filename=file.path(region, "SpawnIndexCatch1972.png"), 
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
     width=figWidth )
 
-# Spawn index plot with SOK harvest
+# Determine ratio of max SOK harvest to max spawn index
+rSOK <- max(allYrSp$HarvSOK, na.rm=TRUE) / max(allYrSp$SITotal, na.rm=TRUE)
+
+# Spawn index plot with SOK harvest (harvest is in lbs -- need to scale)
 siPlotHarv <- siPlot + 
-  geom_col( aes(y=HarvSOK), alpha=0.5 ) +
+  labs( y="Spawn index (t)" ) +
+  scale_y_continuous( labels=comma,
+    sec.axis=sec_axis(~.*rSOK, labels=comma, name="SOK harvest (lb)") ) +
+  geom_col( aes(y=HarvSOK/rSOK), alpha=0.5 ) +
   ggsave( filename=file.path(region, "SpawnIndexHarv.png"), 
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
     width=figWidth )
