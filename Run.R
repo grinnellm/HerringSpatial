@@ -160,7 +160,7 @@ for( reg in 1:length(spRegions) ) {
   if( region == "SoG" )   spUnitName <- "Region"
   if( region == "WCVI" )  spUnitName <- "StatArea"
   if( region == "A27" )   spUnitName <- "StatArea"
-  if( region == "A2W" )   spUnitName <- "Section"
+  if( region == "A2W" )   spUnitName <- "Region"
   # Extract reference years for required region
   refYrs <- refYrsAll %>%
       filter( SAR==region )
