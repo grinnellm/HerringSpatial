@@ -100,6 +100,28 @@ LoadSavedObjects <- function( loc ) {
 # Load saved data (directly!)
 LoadSavedObjects( loc=region )
 
+# Get small area table
+aSmall <- areas %>%
+  select( Region, RegionName, StatArea, Group, Section ) %>%
+  distinct( )
+
+# Calculate SOK harvest
+harvest <- catchRaw %>%
+  filter( DisposalCode == 2, Source=="SOK" ) %>%
+  # group_by( Year, SpUnit ) %>%
+  # summarise( HarvSOK=SumNA(Catch) ) %>%
+  # ungroup( ) %>%
+  # Covert harvest (lb) to spawning biomass (t)
+  mutate( BiomassSOK=CalcBiomassSOK(SOK=Catch*convFac$lb2kg, 
+    eggKelpProp=parsProd$eggKelpProp, 
+    eggBrineProp=parsProd$eggBrineProp, 
+    eggWt=parsProd$eggWt, ECF=ECF),
+    HarvSOK=Catch*convFac$lb2kg/1000 ) %>%
+  left_join( y=aSmall, by=c("Region", "StatArea", "Section") ) %>%
+  select( Year, Region, StatArea, Group, Section, BiomassSOK, HarvSOK )
+# complete( Year=yrRange, fill=list(Harvest=0, Biomass=0) ) %>%
+# arrange( Year, SpUnit )
+
 # Function to load transect spatial info
 LoadTransectXY <- function( loc ) {
   # Load the data and wrangle
@@ -208,20 +230,38 @@ GetSI <- function( allSI, loc, XY ) {
 # Get spawn index
 siAll <- GetSI( allSI=spawnRaw, loc=region, XY=transectXY )
 
-# Load privacy data if required
-if( region == "HG" & spUnitName %in% c("Section", "Region") ) {
-  # Load the data
-  privCatchDat <- read_csv( 
-    file=paste("CatchPrivacy", spUnitName, region, ".csv", sep=""),
-    col_types=cols() ) %>%
-    # rename_( SpUnit=spUnitName ) %>%
-    mutate( PrivCatch=TRUE )
-}  # End if loading catch privacy data
+# Load catch and harvest privacy info
+LoadPrivacy <- function( sp, sc, fn ) {
+  # New variable name
+  varName <- paste( "Priv", fn, sep="" )
+  # Generate catch/harvest privacy file name
+  privFN <- paste( fn, "Privacy", sp, sc, ".csv", sep="" )
+  # If there is a privacy file
+  if( privFN %in% list.files() ) {
+    # Load the privacy data
+    privDat <- read_csv( file=privFN, col_types=cols() ) %>%
+      mutate( Private=TRUE ) %>%
+      rename( !!varName:=Private )  # Weird but works..
+    # Print a message
+    cat( "Loading", fn, "privacy info for", sc, "by", sp, "\n" )
+  } else {  # End if there is privacy data, otherwise
+    # No data
+    privDat <- NULL
+  }  # End if there is no catch privacy data
+ # Return the data
+  return( privDat )
+}  # End LoadPrivacy function
+
+# Load catch privacy data (if any)
+privCatchDat <- LoadPrivacy( sp=spUnitName, sc=region, fn="Catch" )
+
+# Load harvest privacy data (if any)
+privHarvDat <- LoadPrivacy( sp=spUnitName, sc=region, fn="Harvest" )
 
 ##### Main ##### 
 
 # Deal with privacy issues for catch data (if any)
-if( exists("privCatchDat") ) {
+if( !is.null(privCatchDat) ) {
   # Identify which catch values are private (TRUE)
   catch <- catch %>%
     full_join( y=privCatchDat ) %>%
@@ -230,7 +270,19 @@ if( exists("privCatchDat") ) {
   # Add a dummy column
   catch <- catch %>%
     mutate( PrivCatch=FALSE )
-}  # End if no privacy issues
+}  # End if no privacy issues (catch)
+
+# Deal with privacy issues for harvest data (if any)
+if( !is.null(privHarvDat) ) {
+  # Identify which harvest values are private (TRUE)
+  harvest <- harvest %>%
+    full_join( y=privHarvDat ) %>%
+    replace_na( replace=list(PrivHarvest=FALSE) )
+} else {  # End if privacy issues, otherwise
+  # Add a dummy column
+  harvest <- harvest %>%
+    mutate( PrivHarvest=FALSE )
+}  # End if no privacy issues (harvest)
 
 # Rename variables to set spatial resolution
 areas <- areas %>%
@@ -245,7 +297,7 @@ catch <- catch %>%
   mutate( Section=formatC(Section, width=3, flag="0"),
     StatArea=formatC(StatArea, width=2, flag="0") ) %>%
   rename_( SpUnit=spUnitName )
-catchRaw <- catchRaw %>%
+harvest <- harvest %>%
   mutate( Section=formatC(Section, width=3, flag="0"),
     StatArea=formatC(StatArea, width=2, flag="0") ) %>%
   rename_( SpUnit=spUnitName )
@@ -263,25 +315,17 @@ catchYrSp <- catch %>%
   arrange( Year, SpUnit ) %>%
   mutate( CatchShow=ifelse(PrivCatch, 0, Catch) )
 
-# Aggregate SOK harvest by year and spatial unit
-harvYrSp <- catchRaw %>%
-  filter( DisposalCode == 2, Source=="SOK" ) %>%
+# Aggregate harvest by year and spatial unit
+harvYrSp <- harvest %>%
   group_by( Year, SpUnit ) %>%
-  summarise( HarvSOK=SumNA(Catch) ) %>%
+  summarise( HarvSOK=SumNA(HarvSOK), PrivHarvest=unique(PrivHarvest) ) %>%
   ungroup( ) %>%
-  # Covert harvest (lb) to spawning biomass (t)
-  mutate( BiomassSOK=CalcBiomassSOK(SOK=HarvSOK*convFac$lb2kg, 
-    eggKelpProp=parsProd$eggKelpProp, 
-    eggBrineProp=parsProd$eggBrineProp, 
-    eggWt=parsProd$eggWt, ECF=ECF),
-    HarvKgSOK=HarvSOK*convFac$lb2kg ) %>%
-  # complete( Year=yrRange, fill=list(Harvest=0, Biomass=0) ) %>%
-  arrange( Year, SpUnit )
+  complete( Year, SpUnit ) %>%
+  arrange( Year, SpUnit ) %>%
+  mutate( HarvSOKShow=ifelse(PrivHarvest, 0, HarvSOK) )
 
-# Add SOK harvest to catch table
-catchYrSp <- catchYrSp %>%
-  full_join( y=harvYrSp, by=c("Year", "SpUnit") ) %>%
-  arrange( Year, SpUnit )
+# Add harvest data to catch table
+catchYrSp <- full_join( catchYrSp, harvYrSp, by=c("Year", "SpUnit") )
 
 # Update years (use the same year to compare timing among years)
 year( siAll$Start ) <- 0000
@@ -1111,8 +1155,7 @@ siPlotBase <- siPlot +
 siPlotCatch <- siPlot +
   labs( y="Spawn index and catch (t)" ) +
   geom_col( data=filter(allYrSp, !PrivCatch), aes(y=Catch), alpha=0.5 ) +
-  geom_point( data=filter(allYrSp, PrivCatch, !is.na(Catch)), 
-    aes(y=CatchShow), shape=8 ) +
+  geom_point( data=filter(allYrSp, PrivCatch), aes(y=CatchShow), shape=8 ) +
   ggsave( filename=file.path(region, "SpawnIndexCatch.png"), 
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
     width=figWidth )
@@ -1133,8 +1176,9 @@ rSOK <- max(allYrSp$HarvSOK, na.rm=TRUE) / max(allYrSp$SITotal, na.rm=TRUE)
 siPlotHarv <- siPlot + 
   labs( y="Spawn index (t)" ) +
   scale_y_continuous( labels=comma,
-    sec.axis=sec_axis(~.*rSOK, labels=comma, name="SOK harvest (lb)") ) +
-  geom_col( aes(y=HarvSOK/rSOK), alpha=0.5 ) +
+    sec.axis=sec_axis(~.*rSOK, labels=comma, name="SOK harvest (t)") ) +
+  geom_col( data=filter(allYrSp, !PrivHarvest), aes(y=HarvSOK/rSOK), alpha=0.5 ) +
+  geom_point( data=filter(allYrSp, PrivHarvest), aes(y=HarvSOKShow), shape=8 ) +
   ggsave( filename=file.path(region, "SpawnIndexHarv.png"), 
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
     width=figWidth )
