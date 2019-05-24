@@ -194,7 +194,7 @@ if( spUnitName %in% c("Region", "StatArea", "Group", "Section") ) {
 GetSI <- function( allSI, loc, XY ) { 
   # Get a subset and wrangle
   raw <- allSI %>%
-    replace_na( list(SurfSI=0, MacroSI=0, UnderSI=0, Group="Other") ) %>%
+    replace_na( list(Group="Other") ) %>%
     mutate( Decade=GetDecade(Year), Area=Length*Width, 
       Survey=ifelse(Year < newSurvYr, "Surface", "Dive"),
       YrsSurv=ifelse(Year < newSurvYr, length(yrRange[yrRange<newSurvYr]),
@@ -248,7 +248,7 @@ LoadPrivacy <- function( sp, sc, fn ) {
     # No data
     privDat <- NULL
   }  # End if there is no catch privacy data
- # Return the data
+  # Return the data
   return( privDat )
 }  # End LoadPrivacy function
 
@@ -1340,7 +1340,18 @@ catchPrivOut <- allYrSp %>%
   arrange( SpUnit, Year ) %>%
   write_csv( path=file.path(region, "CatchPrivacy.csv") )
 
-##### End ##### 
+# Write catch, harvest, and spawn index (private data = WP)
+outCatchHarvSI <- allYrSp %>%
+  mutate_if( is.numeric, round, 3 ) %>%
+  mutate( Catch=ifelse(PrivCatch, "WP", Catch),
+    HarvSOK=ifelse(PrivHarvest, "WP", HarvSOK) ) %>%
+  replace_na( replace=list(Catch=0, HarvSOK=0) ) %>%
+  rename( SpawnIndex=SITotal ) %>%
+  select( Year, SpUnit, Catch, HarvSOK, SpawnIndex, BiomassLower, BiomassMedian,
+    BiomassUpper ) %>%
+  write_csv( path=file.path(region, "CatchHarvSI.csv") )
+
+##### End #####
 
 # Print end of file message and elapsed time
 cat( "End of file SpatialAnalysis.R: ", sep="" )
