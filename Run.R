@@ -54,7 +54,7 @@ UsePackages( pkgs=c("tidyverse", "sp", "scales", "ggforce", "lubridate",
 ##### Controls #####
 
 # Select region(s): major (HG, PRD, CC, SoG, WCVI); or minor (A27, A2W)
-spRegions <- c( "WCVI" )
+spRegions <- c( "HG" )
 
 # File name for dive transect XY
 diveFN <- file.path( "Data", "dive_transects_with_lat_long_June2_2017.xlsx" )
@@ -154,7 +154,7 @@ for( reg in 1:length(spRegions) ) {
   # Get the ith region
   region <- spRegions[reg]
   # Spatial unit: Region, StatArea, Section, or Group
-  if( region == "HG" )    spUnitName <- "Region"
+  if( region == "HG" )    spUnitName <- "Section"
   if( region == "PRD" )   spUnitName <- "StatArea"
   if( region == "CC" )    spUnitName <- "StatArea"
   if( region == "SoG" )   spUnitName <- "Region"
