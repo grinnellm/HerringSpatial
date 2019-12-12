@@ -41,9 +41,9 @@ sTime2 <- Sys.time( )  # Start the timer
 
 # Extract q parameters
 qParsSub <- qPars %>%
-  filter( Region == region, Model %in% mNames ) %>%
+  filter( Region == region ) %>%
   rename( qLower=Lower, qMedian=Median, qUpper=Upper ) %>%
-  select( Model, qLower, qMedian, qUpper, Survey )
+  select( qLower, qMedian, qUpper, Survey )
 
 # If old directory exists
 if( region %in% list.files() ) {
@@ -389,6 +389,11 @@ allYrSp <- full_join( x=catchYrSp, y=siYrSp, by=c("Year", "SpUnit") ) %>%
     HarvestMedian=Catch/(Catch+BiomassMedian),
     HarvestUpper=Catch/(Catch+BiomassLower) ) %>%
   filter( !is.na(SpUnit) )  # Omit NAs
+
+# Calculate sum of biomass and catch, set zeros to NA
+allYrSp$BiomassCatch <- rowSums( allYrSp[, c("BiomassMedian", "Catch")],
+                                 na.rm=TRUE )
+allYrSp$BiomassCatch[allYrSp$BiomassCatch==0] <- NA
 
 # Count the number of fish aged by year (and as a proportion) by seine gear:
 # use the 'SampWt' column to fix unrepresentative sampling if identified
@@ -1128,8 +1133,6 @@ if( region == "SoG" & spUnitName == "Group" ) {
 siPlot <- ggplot( data=allYrSp, #filter(allYrSp, !is.na(Survey)), 
   aes(x=Year, group=Survey) ) +
   # geom_ribbon( aes(ymin=BiomassLower, ymax=BiomassUpper), fill="lightgrey" ) +
-  geom_line( aes(y=SITotal) ) +
-  geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
   geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   scale_y_continuous( labels=comma ) +
@@ -1146,6 +1149,8 @@ siPlot <- ggplot( data=allYrSp, #filter(allYrSp, !is.na(Survey)),
 
 # Spawn index plot: basic
 siPlotBase <- siPlot +
+  geom_line( aes(y=SITotal) ) +
+  geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
   labs( y="Spawn index (t)" ) +
   ggsave( filename=file.path(region, "SpawnIndex.png"), 
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
@@ -1153,6 +1158,8 @@ siPlotBase <- siPlot +
 
 # Spawn index plot: with catch
 siPlotCatch <- siPlot +
+  geom_line( aes(y=SITotal) ) +
+  geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
   labs( y="Spawn index and catch (t)" ) +
   geom_col( data=filter(allYrSp, !PrivCatch), aes(y=Catch), alpha=0.5 ) +
   geom_point( data=filter(allYrSp, PrivCatch), aes(y=CatchShow), shape=8 ) +
@@ -1160,20 +1167,35 @@ siPlotCatch <- siPlot +
     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
     width=figWidth )
 
-# Spawn index plot: with catch >= 1972
-siPlotCatch1972 <- siPlot +
-  labs( y="Spawn index and catch (t)" ) +
-  geom_col( data=filter(allYrSp, !is.na(Survey), Year>=1972), aes(y=Catch), 
-    alpha=0.5 ) +
-  ggsave( filename=file.path(region, "SpawnIndexCatch1972.png"), 
-    height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
-    width=figWidth )
+# Plot scaled abundance and catch: with catch
+saPlotCatch <- siPlot + 
+  geom_line( aes(y=BiomassCatch) ) +
+  geom_point( aes(y=BiomassCatch, shape=Survey) ) +
+  labs( y="Scaled abundance + catch, and catch (t)" ) +
+  geom_col( data=filter(allYrSp, !PrivCatch), aes(y=Catch), alpha=0.5 ) +
+  geom_point( data=filter(allYrSp, PrivCatch), aes(y=CatchShow), shape=8 ) +
+  ggsave( filename=file.path(region, "ScaledAbundCatch.png"), 
+          height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
+          width=figWidth )
+  
+# # Spawn index plot: with catch >= 1972
+# siPlotCatch1972 <- siPlot +
+#   geom_line( aes(y=SITotal) ) +
+#   geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
+#   labs( y="Spawn index and catch (t)" ) +
+#   geom_col( data=filter(allYrSp, !is.na(Survey), Year>=1972), aes(y=Catch), 
+#     alpha=0.5 ) +
+#   ggsave( filename=file.path(region, "SpawnIndexCatch1972.png"), 
+#     height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
+#     width=figWidth )
 
 # Determine ratio of max SOK harvest to max spawn index
 rSOK <- max(allYrSp$HarvSOK, na.rm=TRUE) / max(allYrSp$SITotal, na.rm=TRUE)
 
 # Spawn index plot with SOK harvest (harvest is in lbs -- need to scale)
 siPlotHarv <- siPlot + 
+  geom_line( aes(y=SITotal) ) +
+  geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
   labs( y="Spawn index (t)" ) +
   scale_y_continuous( labels=comma,
     sec.axis=sec_axis(~.*rSOK, labels=comma, name="SOK harvest (t)") ) +

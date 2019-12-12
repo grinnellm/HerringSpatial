@@ -62,8 +62,8 @@ diveFN <- file.path( "Data", "dive_transects_with_lat_long_June2_2017.xlsx" )
 # File name for q parameters
 qFN <- file.path( "Data", "qPars.csv" )
 
-# Model: AM1 and/or AM2 (Note: This has not been tested with > 1 model)
-mNames <- "AM2"
+# # Model: AM1 and/or AM2 (Note: This has not been tested with > 1 model)
+# mNames <- "AM2"
 
 # Generate GIF---this can take a long time---use 64 bit R.
 makeGIF <- FALSE
@@ -118,8 +118,7 @@ subLatex <- function( x )
 ##### Data #####
 
 # Load q parameters (from the latest assessment)
-qPars <- read_csv( file=qFN, 
-    col_types=cols("c", "c", "c", "d", "d", "d", "c") )
+qPars <- read_csv( file=qFN, col_types=cols() )
 
 # Region names
 allRegionNames <- list( 
@@ -154,7 +153,7 @@ for( reg in 1:length(spRegions) ) {
   # Get the ith region
   region <- spRegions[reg]
   # Spatial unit: Region, StatArea, Section, or Group
-  if( region == "HG" )    spUnitName <- "Section"
+  if( region == "HG" )    spUnitName <- "Group"
   if( region == "PRD" )   spUnitName <- "StatArea"
   if( region == "CC" )    spUnitName <- "StatArea"
   if( region == "SoG" )   spUnitName <- "Region"
@@ -175,22 +174,6 @@ for( reg in 1:length(spRegions) ) {
 }  # End reg loop over region(s)
 
 ##### Tables #####
-
-# Write q parameters
-xqPars <- qPars %>%
-    filter( Region %in% spRegions, Model %in% mNames ) %>%
-    mutate( Region=factor(Region, levels=regions$Region),
-        Lower=formatC(x=Lower, digits=3, format="f"), 
-        Median=formatC(Median, digits=3, format="f"),
-        Upper=formatC(x=Upper, digits=3, format="f"),
-        Parameter=mathLatex(subLatex(Parameter)) ) %>%
-    select( -Survey ) %>%
-    rename( SAR=Region ) %>%
-    arrange( SAR, Model, Parameter ) %>%
-    xtable( ) %>%
-    print( file="qPars.tex", include.rownames=FALSE, booktabs=TRUE, 
-        only.contents=TRUE, NA.string=NA, sanitize.colnames.function=boldLatex,
-        sanitize.text.function=identity )
 
 ##### Output #####
 
