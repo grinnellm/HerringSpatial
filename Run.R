@@ -49,7 +49,7 @@ UsePackages <- function( pkgs, locn="https://cran.rstudio.com/" ) {
 # Make packages available
 UsePackages( pkgs=c("tidyverse", "sp", "scales", "ggforce", "lubridate", 
         "cowplot", "GGally", "magick", "ggrepel", "readxl", "xtable", 
-        "viridis", "zoo") )
+        "viridis", "zoo", "SpawnIndex") )
 
 ##### Controls #####
 

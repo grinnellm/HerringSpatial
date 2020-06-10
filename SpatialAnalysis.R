@@ -78,7 +78,6 @@ LoadSavedObjects <- function( loc ) {
   UpdateCatchData <<- UpdateCatchData  # Function to update catch data
   CalcWeightAtAge <<- CalcWeightAtAge  # Function to calculate weight-at-age
   CalcLengthAtAge <<- CalcLengthAtAge  # Function to calculate length-at-age
-  CalcBiomassSOK <<- CalcBiomassSOK  #  Function to calculate biomass from SOK
   inclTestCatch <<- inclTestCatch  # Include catch from test fishery
   geoProj <<- geoProj  # Text for maps: projection
   areas <<- areas  # Spatial info
@@ -93,7 +92,6 @@ LoadSavedObjects <- function( loc ) {
   ageShow <<- ageShow  # Age to highlight on the x-at-age plots
   yrBreaks <<- yrBreaks  # Years to show in x-axes
   convFac <<- convFac  # Unit conversion factors
-  parsProd <<- parsProd  # Productivity parameters
   ECF <<- ECF  # Egg conversion factor
 }  # End LoadSavedObjects function
 
@@ -112,10 +110,7 @@ harvest <- catchRaw %>%
   # summarise( HarvSOK=SumNA(Catch) ) %>%
   # ungroup( ) %>%
   # Covert harvest (lb) to spawning biomass (t)
-  mutate( BiomassSOK=CalcBiomassSOK(SOK=Catch*convFac$lb2kg, 
-    eggKelpProp=parsProd$eggKelpProp, 
-    eggBrineProp=parsProd$eggBrineProp, 
-    eggWt=parsProd$eggWt, ECF=ECF),
+  mutate( BiomassSOK=CalcBiomassSOK(SOK=Catch*convFac$lb2kg),
     HarvSOK=Catch*convFac$lb2kg/1000 ) %>%
   left_join( y=aSmall, by=c("Region", "StatArea", "Section") ) %>%
   select( Year, Region, StatArea, Group, Section, BiomassSOK, HarvSOK )
