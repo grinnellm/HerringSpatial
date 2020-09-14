@@ -156,7 +156,7 @@ for( reg in 1:length(spRegions) ) {
   if( region == "HG" )    spUnitName <- "Group"
   if( region == "PRD" )   spUnitName <- "StatArea"
   if( region == "CC" )    spUnitName <- "StatArea"
-  if( region == "SoG" )   spUnitName <- "Section"
+  if( region == "SoG" )   spUnitName <- "Group"
   if( region == "WCVI" )  spUnitName <- "StatArea"
   if( region == "A27" )   spUnitName <- "StatArea"
   if( region == "A2W" )   spUnitName <- "Region"
