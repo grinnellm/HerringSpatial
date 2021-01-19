@@ -51,6 +51,9 @@ UsePackages( pkgs=c("tidyverse", "sp", "scales", "ggforce", "lubridate",
         "cowplot", "GGally", "magick", "ggrepel", "readxl", "xtable", 
         "viridis", "zoo", "SpawnIndex") )
 
+# Suppress summarise info
+options(dplyr.summarise.inform = FALSE)
+
 ##### Controls #####
 
 # Select region(s): major (HG, PRD, CC, SoG, WCVI); or minor (A27, A2W)

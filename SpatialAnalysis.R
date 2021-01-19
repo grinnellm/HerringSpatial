@@ -355,7 +355,7 @@ siYrSp <- siAll %>%
     SITotal=SumNA(SITotal),
     DateFirst=MinNA(Start, End),
     DateLast=MaxNA(Start, End),
-    DateDiff=DateLast-DateFirst,
+    # DateDiff=DateLast-DateFirst,
     Survey=unique(Survey) ) %>%
   group_by( SpUnit ) %>%
   mutate( NConsec=CountConsecutive(Year) ) %>%
@@ -412,37 +412,37 @@ npAgedYear <- bio %>%
 #   ungroup( ) %>%
 #   arrange( Year, SpUnit, Age )
 
-# Calculate weight-at-age by year and area
-weightAge <- bio %>%
-  group_by( SpUnit ) %>%
-  do( CalcWeightAtAge(.) ) %>%
-  ungroup( ) %>%
-  select( Year, SpUnit, Age, Weight ) %>%
-  arrange( Year, SpUnit, Age )
+# # Calculate weight-at-age by year and area
+# weightAge <- bio %>%
+#   group_by( SpUnit ) %>%
+#   do( CalcWeightAtAge(.) ) %>%
+#   ungroup( ) %>%
+#   select( Year, SpUnit, Age, Weight ) %>%
+#   arrange( Year, SpUnit, Age )
 
-# Calculate running mean weight-at-age by year (if data exist)
-if( exists("weightAge") )
-  muWeightAge <- weightAge %>%
-  group_by( SpUnit, Age ) %>%
-  mutate( muWeight=rollmean(x=Weight, k=nRoll, align="right", na.pad=TRUE) ) %>%
-  ungroup( ) %>%
-  mutate( Age=factor(Age) )
+# # Calculate running mean weight-at-age by year (if data exist)
+# if( exists("weightAge") )
+#   muWeightAge <- weightAge %>%
+#   group_by( SpUnit, Age ) %>%
+#   mutate( muWeight=rollmean(x=Weight, k=nRoll, align="right", na.pad=TRUE) ) %>%
+#   ungroup( ) %>%
+#   mutate( Age=factor(Age) )
 
-# Calculate length-at-age by year and area
-lengthAge <- bio %>%
-  group_by( SpUnit ) %>%
-  do( CalcLengthAtAge(.) ) %>%
-  ungroup( ) %>%
-  select( Year, SpUnit, Age, Length ) %>%
-  arrange( Year, SpUnit, Age )
+# # Calculate length-at-age by year and area
+# lengthAge <- bio %>%
+#   group_by( SpUnit ) %>%
+#   do( CalcLengthAtAge(.) ) %>%
+#   ungroup( ) %>%
+#   select( Year, SpUnit, Age, Length ) %>%
+#   arrange( Year, SpUnit, Age )
 
-# Calculate running mean length-at-age by year (if data exist)
-if( exists("lengthAge") )
-  muLengthAge <- lengthAge %>%
-  group_by( SpUnit, Age ) %>%
-  mutate( muLength=rollmean(x=Length, k=nRoll, align="right", na.pad=TRUE) ) %>%
-  ungroup( ) %>%
-  mutate( Age=factor(Age) )
+# # Calculate running mean length-at-age by year (if data exist)
+# if( exists("lengthAge") )
+#   muLengthAge <- lengthAge %>%
+#   group_by( SpUnit, Age ) %>%
+#   mutate( muLength=rollmean(x=Length, k=nRoll, align="right", na.pad=TRUE) ) %>%
+#   ungroup( ) %>%
+#   mutate( Age=factor(Age) )
 
 # Calculate proportion at age by year and spatial unit
 propAge <- npAgedYear %>%
