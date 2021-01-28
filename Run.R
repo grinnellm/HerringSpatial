@@ -57,7 +57,7 @@ options(dplyr.summarise.inform = FALSE)
 ##### Controls #####
 
 # Select region(s): major (HG, PRD, CC, SoG, WCVI); or minor (A27, A2W)
-spRegions <- c( "SoG" )
+spRegions <- c( "All" )
 
 # File name for dive transect XY
 diveFN <- file.path( "Data", "dive_transects_with_lat_long_June2_2017.xlsx" )
@@ -80,7 +80,8 @@ refYrsAll <- read_csv( file=
         SoG, 1951, 2018 
         WCVI, 1990, 1999
         A27, 1951, 2018
-        A2W, 1951, 2018", 
+        A2W, 1951, 2018
+        All, 1951, 2020", 
     col_types=cols("c", "i", "i") )
 
 ##### Parameters #####
@@ -163,6 +164,7 @@ for( reg in 1:length(spRegions) ) {
   if( region == "WCVI" )  spUnitName <- "StatArea"
   if( region == "A27" )   spUnitName <- "StatArea"
   if( region == "A2W" )   spUnitName <- "Region"
+  if( region == "All" )   spUnitName <- "Section"
   # Extract reference years for required region
   refYrs <- refYrsAll %>%
       filter( SAR==region )
