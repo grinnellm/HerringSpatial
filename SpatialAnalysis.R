@@ -68,7 +68,7 @@ LoadSavedObjects <- function( loc ) {
   if( regName != spRegions[reg] )
     stop( "Region mismatch -- check saved image", call.=FALSE )
   # Return objects to the main environment
-  newSurvYr <<- newSurvYr  # Year in which survey type changed
+  newSurvYr <<- pars$years$dive  # Year in which survey type changed
   yrRange <<- yrRange  # Range of years to consider
   inCRS <<- inCRS  # Coordinate reference system (input)
   outCRS <<- outCRS  # Coordinate reference system (output)
@@ -110,7 +110,7 @@ harvest <- catchRaw %>%
   # summarise( HarvSOK=SumNA(Catch) ) %>%
   # ungroup( ) %>%
   # Covert harvest (lb) to spawning biomass (t)
-  mutate( BiomassSOK=CalcBiomassSOK(SOK=Catch*convFac$lb2kg),
+  mutate( BiomassSOK=calc_sok_index(sok=Catch*convFac$lb2kg),
     HarvSOK=Catch*convFac$lb2kg/1000 ) %>%
   left_join( y=aSmall, by=c("Region", "StatArea", "Section") ) %>%
   select( Year, Region, StatArea, Group, Section, BiomassSOK, HarvSOK )
@@ -239,6 +239,11 @@ LoadPrivacy <- function( sp, sc, fn ) {
       rename( !!varName:=Private )  # Weird but works..
     # Print a message
     cat( "Loading", fn, "privacy info for", sc, "by", sp, "\n" )
+    # Character for statistical area
+    if("StatArea" %in% names(privDat)) {
+      privDat <- privDat %>%
+        mutate(StatArea = as.character(StatArea))
+    }  # End character
   } else {  # End if there is privacy data, otherwise
     # No data
     privDat <- NULL
@@ -638,25 +643,26 @@ spawnProps <- ProportionSpawn( dat=siYrSp )
 ##### Figures #####
 
 # Plot the BC coast and regions
-if( reg == 1 )  
+if( reg == 1 ) {
   BCMap <- ggplot( data=shapes$landAllCropDF, aes(x=Eastings, y=Northings) ) +
-  geom_polygon( data=shapes$landAllCropDF, aes(group=group), 
-    fill="lightgrey" ) +
-  geom_point( data=shapes$extAllDF, colour="transparent" ) +
-  geom_path( data=shapes$regAllDF, aes(group=Region), size=0.75, 
-    colour="black" ) + 
-  geom_label( data=shapes$regCentDF, alpha=0.5, aes(label=Region) ) +
-  annotate( geom="text", x=1100000, y=800000, label="British\nColumbia",
-    size=5 ) +
-  annotate( geom="text", x=650000, y=550000, label="Pacific\nOcean", 
-    size=5 ) +
-  coord_equal( ) +
-  labs( x="Eastings (km)", y="Northings (km)", caption=geoProj ) +
-  scale_x_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) + 
-  scale_y_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) +
-  myTheme +
+    geom_polygon( data=shapes$landAllCropDF, aes(group=group), 
+                  fill="lightgrey" ) +
+    geom_point( data=shapes$extAllDF, colour="transparent" ) +
+    geom_path( data=shapes$regAllDF, aes(group=Region), size=0.75, 
+               colour="black" ) + 
+    geom_label( data=shapes$regCentDF, alpha=0.5, aes(label=Region) ) +
+    annotate( geom="text", x=1100000, y=800000, label="British\nColumbia",
+              size=5 ) +
+    annotate( geom="text", x=650000, y=550000, label="Pacific\nOcean", 
+              size=5 ) +
+    coord_equal( ) +
+    labs( x="Eastings (km)", y="Northings (km)", caption=geoProj ) +
+    scale_x_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) + 
+    scale_y_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) +
+    myTheme
   ggsave( filename=file.path("BC.png"), width=figWidth, 
-    height=7/shapes$xyAllRatio )
+          height=7/shapes$xyAllRatio )
+}
 
 # Function to plot the data
 PlotPairs <- function( dat, sub ) {
@@ -741,10 +747,10 @@ PlotSIEtAl <- function( dat1, dat2, dat3, siThresh=siThreshold,
       theme( text=element_text(size=24) )
     # Combine the plots
     siEtAlPlots <- plot_grid( siPlot, paPlot, naPlot, align="v", ncol=1, 
-      rel_heights=c(1, 1, 1) ) +
-      ggsave( file=file.path(region, 
-        paste("AgeComposition", i, ".png", sep="")), 
-        height=figWidth*1.5, width=figWidth )
+      rel_heights=c(1, 1, 1) ) 
+    ggsave( file=file.path(region, 
+                           paste("AgeComposition", i, ".png", sep="")), 
+            height=figWidth*1.5, width=figWidth )
   }  # End i loop over pages
 }  # End PlotSIEtAl function
 
@@ -758,9 +764,9 @@ PlotNumSample <- ggplot( data=numAge, aes(x=Year, y=nAged) ) +
   scale_y_continuous( labels=comma ) +
   labs( y="Number of biological samples (fish)" ) +
   facet_wrap( ~ SpUnit, ncol=1 ) +
-  myTheme + 
-  ggsave( filename=file.path(region, "NumSample.png"), width=figWidth, 
-    height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
+  myTheme  
+ggsave( filename=file.path(region, "NumSample.png"), width=figWidth, 
+        height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
 
 # Make proportion-at-age bubble plots
 PlotPropAgeBubble <- ggplot( data=npAgedYear, aes(x=Year, y=Age) ) +
@@ -769,39 +775,42 @@ PlotPropAgeBubble <- ggplot( data=npAgedYear, aes(x=Year, y=Age) ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   facet_wrap( ~ SpUnit, ncol=1 ) +
   myTheme + 
-  theme( legend.position="top" ) +
-  ggsave( filename=file.path(region, "AgeBubbles.png"), width=figWidth, 
-    height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
+  theme( legend.position="top" ) 
+ggsave( filename=file.path(region, "AgeBubbles.png"), width=figWidth, 
+        height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
 
 # Plot weight-at-age by year (if data exist)
-if( exists("muWeightAge") ) 
+if( exists("muWeightAge") ) { 
   weightAgePlot <- ggplot( data=muWeightAge ) +
-  geom_line( aes(x=Year, y=muWeight, group=Age, colour=Age), size=1 ) +
-  scale_colour_viridis( guide=guide_legend(nrow=1), discrete=TRUE ) +
-  labs( y="Weight-at-age (g)" ) +
-  scale_x_continuous( breaks=yrBreaks ) +
-  #    coord_cartesian( ylim=wtRange ) +
-  expand_limits( x=yrRange ) +
-  facet_wrap( ~ SpUnit, ncol=1 ) +
-  myTheme +
-  theme( legend.position="top" ) +
+    geom_line( aes(x=Year, y=muWeight, group=Age, colour=Age), size=1 ) +
+    scale_colour_viridis( guide=guide_legend(nrow=1), discrete=TRUE ) +
+    labs( y="Weight-at-age (g)" ) +
+    scale_x_continuous( breaks=yrBreaks ) +
+    #    coord_cartesian( ylim=wtRange ) +
+    expand_limits( x=yrRange ) +
+    facet_wrap( ~ SpUnit, ncol=1 ) +
+    myTheme +
+    theme( legend.position="top" ) 
   ggsave( filename=file.path(region, "WeightAge.png"), width=figWidth,
-    height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
-
+          height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
+}
+  
 # Plot length-at-age by year
-if( exists("muLengthAge") )  lengthAgePlot <- ggplot( data=muLengthAge ) +
-  geom_line( aes(x=Year, y=muLength, group=Age, colour=Age), size=1 ) +
-  scale_colour_viridis( guide=guide_legend(nrow=1), discrete=TRUE ) +
-  labs( y="Length-at-age (mm)" ) +
-  scale_x_continuous( breaks=yrBreaks ) +
-  #    coord_cartesian( ylim=lenRange ) +
-  expand_limits( x=yrRange ) +
-  facet_wrap( ~ SpUnit, ncol=1 ) +
-  myTheme +
-  theme( legend.position="top" ) +
+if( exists("muLengthAge") ) {
+  lengthAgePlot <- ggplot( data=muLengthAge ) +
+    geom_line( aes(x=Year, y=muLength, group=Age, colour=Age), size=1 ) +
+    scale_colour_viridis( guide=guide_legend(nrow=1), discrete=TRUE ) +
+    labs( y="Length-at-age (mm)" ) +
+    scale_x_continuous( breaks=yrBreaks ) +
+    #    coord_cartesian( ylim=lenRange ) +
+    expand_limits( x=yrRange ) +
+    facet_wrap( ~ SpUnit, ncol=1 ) +
+    myTheme +
+    theme( legend.position="top" ) 
   ggsave( filename=file.path(region, "LengthAge.png"), width=figWidth,
-    height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
-
+          height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
+}
+  
 # Make a default map for the area
 plotMap <- ggplot( data=shapes$landCropDF, aes(x=Eastings, y=Northings) ) +
   geom_polygon( data=shapes$landCropDF, aes(group=group), fill="lightgrey" ) +
@@ -824,9 +833,9 @@ mapSpUnits <- plotMap +
   #    scale_fill_viridis( discrete=TRUE ) +
   #    theme( legend.position=c(0, 0), legend.justification=c(-0.1, -0.05) ) +
   geom_label_repel( data=shapes$spUnitCentDF, alpha=0.75,
-    aes(label=SpUnit), size=6, point.padding=unit(0, "lines") ) +
-  ggsave( filename=file.path(region, "MapSpUnits.png"), width=figWidth, 
-    height=min(8, figWidth/shapes$xyRatio) )
+                    aes(label=SpUnit), size=6, point.padding=unit(0, "lines") ) 
+ggsave( filename=file.path(region, "MapSpUnits.png"), width=figWidth, 
+        height=min(8, figWidth/shapes$xyRatio) )
 
 # mapSpUnits <- plotMap +
 #   #    geom_polygon( data=shapes$saDF, aes(group=StatArea, fill=id),
@@ -844,9 +853,9 @@ mapNumber <- plotMap +
   geom_point( data=siSurvey, aes(size=Number), alpha=0.5 ) +
   facet_wrap( ~ Survey, ncol=1 ) +
   theme( legend.position=c(0.99, 0.99), legend.justification=c(1, 1),
-    legend.box="horizontal" ) +
-  ggsave( filename=file.path(region, "MapNumber.png"), width=figWidth, 
-    height=min(8, 6/shapes$xyRatio)*2 )  
+         legend.box="horizontal" ) 
+ggsave( filename=file.path(region, "MapNumber.png"), width=figWidth, 
+        height=min(8, 6/shapes$xyRatio)*2 )  
 
 # Show spawn index locations by year
 PlotLocationsYear <- function( dat, yVar, yLegend ) {
@@ -879,10 +888,10 @@ PlotLocationsYear <- function( dat, yVar, yLegend ) {
       scale_colour_distiller( type="seq", palette="Spectral", labels=comma ) +
       labs( colour=yLegend ) +
       theme( legend.position=c(0.99, 0.99), legend.justification=c(1, 1),
-        legend.box="horizontal", legend.text.align=1 ) +
-      ggsave( file=file.path(tDirReg,
-        paste("LocationsYear", yVar, iLong, ".png", sep="")),
-        width=figWidth, height=figWidth/shapes$xyRatio+0.25 )
+             legend.box="horizontal", legend.text.align=1 ) 
+    ggsave( file=file.path(tDirReg,
+                           paste("LocationsYear", yVar, iLong, ".png", sep="")),
+            width=figWidth, height=figWidth/shapes$xyRatio+0.25 )
     # Update progress message
     if( i %in% pIndices )  cat( i, ", ", sep="" )
   }  # End i loop over decades
@@ -915,13 +924,13 @@ PlotLocationsDecade <- function( dat, yVar ) {
     layersPlot <- plotMap +
       facet_wrap_paginate( ~ Decade, ncol=1, nrow=1, page=i ) +
       geom_point( data=dat, aes_string(size="Number", colour=yVar),
-        alpha=0.75) +
+                  alpha=0.75) +
       scale_colour_distiller( type="seq", palette="Spectral", labels=comma ) + 
       theme( legend.position=c(0.99, 0.99), legend.justification=c(1, 1),
-        legend.box="horizontal" ) +
-      ggsave( file=file.path(region, 
-        paste("LocationsDecade", yVar, i, ".png", sep="")), 
-        width=figWidth, height=figWidth/shapes$xyRatio+0.25 )
+             legend.box="horizontal" ) 
+    ggsave( file=file.path(region, 
+                           paste("LocationsDecade", yVar, i, ".png", sep="")), 
+            width=figWidth, height=figWidth/shapes$xyRatio+0.25 )
   }  # End i loop over decades  
 }  # End PlotLocationsDecade
 
@@ -971,8 +980,7 @@ ScatterSI <- function( df, yVar, siThresh=siThreshold, nYrs=nYrsConsec ) {
         facet_wrap( ~ SpUnit )
     }  # End if business as usual
     # Print the plot
-    plt <- plt + 
-      ggsave( filename=file.path(region, 
+    ggsave( filename=file.path(region, 
         paste("Scatter", yVar, i, ".png", sep="")), 
         width=figWidth, 
         height=ifelse(yVar=="Proportion", 1.3*figWidth, 0.7*figWidth) )
@@ -1032,10 +1040,10 @@ TimeseriesSI <- function( df, yVar, siThresh=siThreshold, nYrs=nYrsConsec ) {
       myTheme +
       theme( text=element_text(size=28) )
     # Combine the two plots
-    tsPlots <- plot_grid( tsSI, ts2, align="v", ncol=1, rel_heights=1 ) +
-      ggsave( file=file.path(region, 
-        paste("Timeseries", yVar, i, ".png", sep="")), 
-        width=figWidth, height=figWidth )
+    tsPlots <- plot_grid( tsSI, ts2, align="v", ncol=1, rel_heights=1 ) 
+    ggsave( file=file.path(region, 
+                           paste("Timeseries", yVar, i, ".png", sep="")), 
+            width=figWidth, height=figWidth )
   }  # End loop over pages
 }  # End TimeseriesSI function
 
@@ -1092,10 +1100,10 @@ BarStatArea <- function( df, yVar ) {
     scale_x_continuous( breaks=seq(from=1000, to=3000, by=20) ) +
     expand_limits( y=0, x=yrRange ) +
     myTheme +
-    theme( text=element_text(size=10), panel.spacing=unit(0, "lines") ) +
-    ggsave( file=file.path(region, 
-      paste("BarSections", yVar, ".pdf", sep="")), width=figWidth, 
-      height=figWidth*0.5 )
+    theme( text=element_text(size=10), panel.spacing=unit(0, "lines") ) 
+  ggsave( file=file.path(region, 
+                         paste("BarSections", yVar, ".pdf", sep="")), width=figWidth, 
+          height=figWidth*0.5 )
 }  # End BarStatArea function
 
 # Re-order for plots
@@ -1146,10 +1154,10 @@ siPlot <- ggplot( data=allYrSp, #filter(allYrSp, !is.na(Survey)),
 siPlotBase <- siPlot +
   geom_line( aes(y=SITotal) ) +
   geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
-  labs( y="Spawn index (t)" ) +
-  ggsave( filename=file.path(region, "SpawnIndex.png"), 
-    height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
-    width=figWidth )
+  labs( y="Spawn index (t)" ) 
+ggsave( filename=file.path(region, "SpawnIndex.png"), 
+        height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
+        width=figWidth )
 
 # Spawn index plot: with catch
 siPlotCatch <- siPlot +
@@ -1157,10 +1165,10 @@ siPlotCatch <- siPlot +
   geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
   labs( y="Spawn index and catch (t)" ) +
   geom_col( data=filter(allYrSp, !PrivCatch), aes(y=Catch), alpha=0.5 ) +
-  geom_point( data=filter(allYrSp, PrivCatch), aes(y=CatchShow), shape=8 ) +
-  ggsave( filename=file.path(region, "SpawnIndexCatch.png"), 
-    height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
-    width=figWidth )
+  geom_point( data=filter(allYrSp, PrivCatch), aes(y=CatchShow), shape=8 ) 
+ggsave( filename=file.path(region, "SpawnIndexCatch.png"), 
+        height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
+        width=figWidth )
 
 # Plot scaled abundance and catch: with catch
 saPlotCatch <- siPlot + 
@@ -1168,10 +1176,10 @@ saPlotCatch <- siPlot +
   geom_point( aes(y=BiomassCatch, shape=Survey) ) +
   labs( y="Scaled abundance + catch, and catch (t)" ) +
   geom_col( data=filter(allYrSp, !PrivCatch), aes(y=Catch), alpha=0.5 ) +
-  geom_point( data=filter(allYrSp, PrivCatch), aes(y=CatchShow), shape=8 ) +
-  ggsave( filename=file.path(region, "ScaledAbundCatch.png"), 
-          height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
-          width=figWidth )
+  geom_point( data=filter(allYrSp, PrivCatch), aes(y=CatchShow), shape=8 ) 
+ggsave( filename=file.path(region, "ScaledAbundCatch.png"), 
+        height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
+        width=figWidth )
   
 # # Spawn index plot: with catch >= 1972
 # siPlotCatch1972 <- siPlot +
@@ -1193,26 +1201,26 @@ siPlotHarv <- siPlot +
   geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
   labs( y="Spawn index (t)" ) +
   scale_y_continuous( labels=comma,
-    sec.axis=sec_axis(~.*rSOK, labels=comma, name="SOK harvest (t)") ) +
+                      sec.axis=sec_axis(~.*rSOK, labels=comma, name="SOK harvest (t)") ) +
   geom_col( data=filter(allYrSp, !PrivHarvest), aes(y=HarvSOK/rSOK), alpha=0.5 ) +
-  geom_point( data=filter(allYrSp, PrivHarvest), aes(y=HarvSOKShow), shape=8 ) +
-  ggsave( filename=file.path(region, "SpawnIndexHarv.png"), 
-    height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
-    width=figWidth )
+  geom_point( data=filter(allYrSp, PrivHarvest), aes(y=HarvSOKShow), shape=8 ) 
+ggsave( filename=file.path(region, "SpawnIndexHarv.png"), 
+        height=min(8.75, n_distinct(allYrSp$SpUnit)*1.9+1), 
+        width=figWidth )
 
 # Plot the spawn index showing proportion of spawn by spatial group
 siBarplot <- ggplot( data=siYrSpProp, aes(x=Year, y=SITotal) ) +
   geom_col( aes(fill=SpUnit) ) + 
   labs( y=expression(paste("Spawning biomass (t"%*%10^3, ")", sep="")), 
-    fill=NULL ) +
+        fill=NULL ) +
   geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   scale_y_continuous( labels=function(x) comma(x/1000) ) +
   expand_limits( x=yrRange ) +
   myTheme +
-  theme( legend.position="top" ) +
-  ggsave( filename=file.path(region, "SpawnIndexBar.png"), 
-    height=figWidth*0.7, width=figWidth )
+  theme( legend.position="top" ) 
+ggsave( filename=file.path(region, "SpawnIndexBar.png"), 
+        height=figWidth*0.7, width=figWidth )
 
 # Plot the spawn index showing proportion of spawn by spatial group
 PlotSIBarProp <- function( df ) {
@@ -1252,9 +1260,9 @@ PlotSIBarProp <- function( df ) {
   #              paste("Timeseries", yVar, i, ".png", sep="")), 
   #          width=figWidth, height=figWidth )
   siBarplotProp <- plot_grid( plot1, plot2, align="v", ncol=1, 
-    rel_heights=c(1, 2) ) +
-    ggsave( filename=file.path(region, "SpawnIndexBarProp.png"), 
-      height=figWidth, width=figWidth )
+                              rel_heights=c(1, 2) ) 
+  ggsave( filename=file.path(region, "SpawnIndexBarProp.png"), 
+          height=figWidth, width=figWidth )
 }  # End PlotSIBarProp function
 
 # Plot spawn index proportion (and total)
@@ -1265,13 +1273,13 @@ wtMeanPlot <- plotMap +
   geom_point( data=siAll, size=0.75 ) + 
   geom_point( data=siWeightedYear, aes(colour=SITotal), size=5, alpha=0.9 ) +
   geom_point( data=siWeightedYear, aes(x=EastingsPrev, y=NorthingsPrev),
-    size=2, colour="darkgrey", alpha=0.8 ) +
+              size=2, colour="darkgrey", alpha=0.8 ) +
   geom_segment( data=siWeightedYear, aes(xend=EastingsPrev, 
-    yend=NorthingsPrev), alpha=0.7 ) +
+                                         yend=NorthingsPrev), alpha=0.7 ) +
   scale_colour_distiller( type="seq", palette="Spectral", labels=comma ) +
-  facet_wrap( ~ Year, ncol=14 ) +
-  ggsave( file=file.path(region, "WeightedMeanSpawnIndex.png"), 
-    width=figWidth*14/5, height=figWidth*5/shapes$xyRatio/5 )
+  facet_wrap( ~ Year, ncol=14 ) 
+ggsave( file=file.path(region, "WeightedMeanSpawnIndex.png"), 
+        width=figWidth*14/5, height=figWidth*5/shapes$xyRatio/5 )
 
 # Spawn timing by year and spatial unit
 timingPlot <- ggplot( data=filter(siAllLong, !is.na(Survey)), aes(x=Year) ) +
@@ -1282,9 +1290,9 @@ timingPlot <- ggplot( data=filter(siAllLong, !is.na(Survey)), aes(x=Year) ) +
   labs( y="Date" ) +
   facet_wrap( ~ SpUnit, ncol=1 ) +
   myTheme +
-  theme( legend.position="top" ) +
-  ggsave( filename=file.path(region, "SpawnTiming.png"), 
-    height=min(8.75, n_distinct(siAll$SpUnit)*1.9+1), width=figWidth )
+  theme( legend.position="top" ) 
+ggsave( filename=file.path(region, "SpawnTiming.png"), 
+        height=min(8.75, n_distinct(siAll$SpUnit)*1.9+1), width=figWidth )
 
 # Annual spawn index by method and spatial unit
 methodPlot <- ggplot( data=siMethod, aes(x=Year, y=SITotal) ) +
@@ -1297,9 +1305,9 @@ methodPlot <- ggplot( data=siMethod, aes(x=Year, y=SITotal) ) +
   expand_limits( x=yrRange ) +
   facet_wrap( ~ SpUnit, ncol=1 ) +
   myTheme +
-  theme( legend.position="top" ) +
-  ggsave( filename=file.path(region, "SpawnMethod.png"), 
-    height=min(8.75, n_distinct(siAll$SpUnit)*1.9+1), width=figWidth )
+  theme( legend.position="top" ) 
+ggsave( filename=file.path(region, "SpawnMethod.png"), 
+        height=min(8.75, n_distinct(siAll$SpUnit)*1.9+1), width=figWidth )
 
 # Effective harvest rate by spatial unit
 effHarvPlot <- ggplot( data=allYrSp, aes(x=Year, y=HarvestMedian) ) +
@@ -1308,18 +1316,18 @@ effHarvPlot <- ggplot( data=allYrSp, aes(x=Year, y=HarvestMedian) ) +
   geom_point( size=1 ) +
   geom_vline( xintercept=newSurvYr-0.5, linetype="dashed" ) +
   annotate( geom="segment", x=intendUYrs, y=intendU, xend=max(yrRange), 
-    yend=intendU, linetype="dashed" ) +
+            yend=intendU, linetype="dashed" ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   labs( y="Effective harvest rate [catch/(catch+biomass)]" ) +
   facet_grid( SpUnit ~ . ) +
   expand_limits( x=yrRange ) +
-  myTheme +
-  ggsave( filename=file.path(region, "HarvestRate.png"), 
-    height=min(8.75, n_distinct(siAll$SpUnit)*1.9+1), width=figWidth )
+  myTheme 
+ggsave( filename=file.path(region, "HarvestRate.png"), 
+        height=min(8.75, n_distinct(siAll$SpUnit)*1.9+1), width=figWidth )
 
 # Spawn timing and distribution
 spawnTimeDist <- ggplot( data=filter(siTimeSp, SpUnit!="Other", !is.na(Timing)), 
-  aes(x=Year, y=SITotal) ) +
+                         aes(x=Year, y=SITotal) ) +
   geom_col( aes(fill=Timing), position="stack" ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   scale_y_continuous( labels=function(x) comma(x/1000) ) +
@@ -1327,9 +1335,9 @@ spawnTimeDist <- ggplot( data=filter(siTimeSp, SpUnit!="Other", !is.na(Timing)),
   labs( y=expression(paste("Spawn index (t"%*%10^3, ")", sep="")) ) +
   facet_wrap( ~ SpUnit, ncol=2 ) +
   myTheme + 
-  theme( legend.position="top", axis.text.x=element_text(angle=45, vjust=0.5) ) +
-  ggsave( filename=file.path(region, "SpawnTimeDist.png"), 
-    height=figWidth, width=figWidth )
+  theme( legend.position="top", axis.text.x=element_text(angle=45, vjust=0.5) ) 
+ggsave( filename=file.path(region, "SpawnTimeDist.png"), 
+        height=figWidth, width=figWidth )
 
 ##### Output #####
 
