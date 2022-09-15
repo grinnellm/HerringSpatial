@@ -49,7 +49,7 @@ UsePackages <- function( pkgs, locn="https://cran.rstudio.com/" ) {
 # Make packages available
 UsePackages( pkgs=c("tidyverse", "sp", "scales", "ggforce", "lubridate", 
         "cowplot", "GGally", "magick", "ggrepel", "readxl", "xtable", 
-        "viridis", "zoo", "SpawnIndex") )
+        "viridis", "zoo", "SpawnIndex", "rgdal") )
 
 # Suppress summarise info
 options(dplyr.summarise.inform = FALSE)
@@ -57,7 +57,7 @@ options(dplyr.summarise.inform = FALSE)
 ##### Controls #####
 
 # Select region(s): major (HG, PRD, CC, SoG, WCVI); or minor (A27, A2W)
-spRegions <- c( "WCVI" )
+spRegions <- c( "CC" )
 
 # File name for dive transect XY
 diveFN <- file.path( "Data", "dive_transects_with_lat_long_June2_2017.xlsx" )

@@ -242,7 +242,7 @@ LoadPrivacy <- function( sp, sc, fn ) {
     # Character for statistical area
     if("StatArea" %in% names(privDat)) {
       privDat <- privDat %>%
-        mutate(StatArea = as.character(StatArea))
+        mutate(StatArea = formatC(StatArea, width = 2, flag = "0"))
     }  # End character
   } else {  # End if there is privacy data, otherwise
     # No data
