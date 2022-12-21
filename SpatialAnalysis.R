@@ -1366,15 +1366,15 @@ catchPrivOut <- allYrSp %>%
   write_csv( path=file.path(region, "CatchPrivacy.csv") )
 
 # Write catch, harvest, and spawn index (private data = WP)
-outCatchHarvSI <- allYrSp %>%
-  mutate_if( is.numeric, round, 3 ) %>%
-  mutate( Catch=ifelse(PrivCatch, "WP", Catch),
-    HarvSOK=ifelse(PrivHarvest, "WP", HarvSOK) ) %>%
-  replace_na( replace=list(Catch=0, HarvSOK=0) ) %>%
-  rename( SpawnIndex=SITotal ) %>%
-  select( Year, SpUnit, Catch, HarvSOK, SpawnIndex, BiomassLower, BiomassMedian,
-    BiomassUpper ) %>%
-  write_csv( path=file.path(region, "CatchHarvSI.csv") )
+# outCatchHarvSI <- allYrSp %>%
+#   mutate_if( is.numeric, round, 3 ) %>%
+#   mutate( Catch=ifelse(PrivCatch, "WP", Catch),
+#     HarvSOK=ifelse(PrivHarvest, "WP", HarvSOK) ) %>%
+#   replace_na( replace=list(Catch=0, HarvSOK=0) ) %>%
+#   rename( SpawnIndex=SITotal ) %>%
+#   select( Year, SpUnit, Catch, HarvSOK, SpawnIndex, BiomassLower, BiomassMedian,
+#     BiomassUpper ) %>%
+#   write_csv( path=file.path(region, "CatchHarvSI.csv") )
 
 ##### End #####
 
