@@ -1200,8 +1200,8 @@ siPlotHarv <- siPlot +
   geom_line( aes(y=SITotal) ) +
   geom_point( aes(y=SITotal, shape=Survey) ) + #, colour=Year%in%refYears) ) +
   labs( y="Spawn index (t)" ) +
-  scale_y_continuous( labels=comma,
-                      sec.axis=sec_axis(~.*rSOK, labels=comma, name="SOK harvest (t)") ) +
+  scale_y_continuous( labels=comma ) +
+                      # sec.axis=sec_axis(~.*rSOK, labels=comma, name="SOK harvest (t)") ) +
   geom_col( data=filter(allYrSp, !PrivHarvest), aes(y=HarvSOK/rSOK), alpha=0.5 ) +
   geom_point( data=filter(allYrSp, PrivHarvest), aes(y=HarvSOKShow), shape=8 ) 
 ggsave( filename=file.path(region, "SpawnIndexHarv.png"), 
