@@ -925,8 +925,10 @@ PlotLocationsDecade <- function( dat, yVar ) {
       facet_wrap_paginate( ~ Decade, ncol=1, nrow=1, page=i ) +
       geom_point( data=dat, aes_string(size="Number", colour=yVar),
                   alpha=0.75) +
-      scale_colour_distiller( type="seq", palette="Spectral", labels=comma ) + 
-      theme( legend.position=c(0.99, 0.99), legend.justification=c(1, 1),
+      labs(size = "Frequency", colour = "Mean spawn\nindex (t)") +
+      scale_colour_viridis( labels=comma ) +
+      scale_size(breaks = pretty_breaks(), guide = guide_legend(order = 2)) +
+      theme( legend.position=c(0.01, 0.01), legend.justification=c(0, 0),
              legend.box="horizontal" ) 
     ggsave( file=file.path(region, 
                            paste("LocationsDecade", yVar, i, ".png", sep="")), 
