@@ -49,7 +49,7 @@ UsePackages <- function( pkgs, locn="https://cran.rstudio.com/" ) {
 # Make packages available
 UsePackages( pkgs=c("tidyverse", "sp", "scales", "ggforce", "lubridate", 
         "cowplot", "GGally", "magick", "ggrepel", "readxl", "xtable", 
-        "viridis", "zoo", "SpawnIndex", "rgdal", "viridis") )
+        "viridis", "zoo", "SpawnIndex", "rgdal", "viridis", "here", "sf") )
 
 # Suppress summarise info
 options(dplyr.summarise.inform = FALSE)
@@ -57,7 +57,7 @@ options(dplyr.summarise.inform = FALSE)
 ##### Controls #####
 
 # Select region(s): major (HG, PRD, CC, SoG, WCVI); or minor (A27, A2W)
-spRegions <- c( "SoG" )
+spRegions <- c( "All" )
 
 # File name for dive transect XY
 diveFN <- file.path( "Data", "dive_transects_with_lat_long_June2_2017.xlsx" )
@@ -68,7 +68,7 @@ qFN <- file.path( "Data", "qPars.csv" )
 # # Model: AM1 and/or AM2 (Note: This has not been tested with > 1 model)
 # mNames <- "AM2"
 
-# Generate GIF---this can take a long time---use 64 bit R.
+# Generate GIF (this can take a long time; use 64-bit R)
 makeGIF <- FALSE
 
 # Reference years
@@ -145,6 +145,10 @@ regions <- read_csv(file=
 
 # Determine if the region is minor or major
 isMajor <- regions[regions$Region ==spRegions,]$Major
+
+# Area shapefiles from FN: Tla'amin, A'Tlegay
+# FN_shape <- st_read(dsn = here("..", "Data", "FN", "Tlaamin"), quiet = TRUE)
+FN_shape <- st_read(dsn = here("..", "Data", "FN", "NationTerritories.kml"), quiet = TRUE)
 
 ##### Main ##### 
 

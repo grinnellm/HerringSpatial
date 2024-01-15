@@ -204,6 +204,10 @@ GetSI <- function( allSI, loc, XY ) {
   # Clip the extent
   df <- ClipExtent( dat=raw, spObj=shapes$regSPDF, bufDist=maxBuff, 
     silent=TRUE )
+  # Turn missing X and Y into NAs
+  df <- df %>%
+    mutate(Eastings = ifelse(Longitude == 0, NA, Eastings),
+           Northings = ifelse(Latitude == 0, NA, Northings))
   # Subset data with 'good' X and Y
   dfNotNA <- df %>%
     filter( !is.na(Eastings) & !is.na(Northings) )
@@ -810,10 +814,27 @@ if( exists("muLengthAge") ) {
   ggsave( filename=file.path(region, "LengthAge.png"), width=figWidth,
           height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
 }
-  
+
+# Get spatial coordinates for FN shape
+FN_shape_coord <- FN_shape %>%
+  st_transform(crs = outCRS) %>%
+  st_coordinates()
+
+# Make FN shapefile into a data.frame
+FN_shape_2 <- tibble(
+  Eastings = FN_shape_coord[, "X"], 
+  Northings = FN_shape_coord[, "Y"],
+  order = 1:nrow(FN_shape_coord),
+  hole = FALSE,
+  piece = 1,
+  id = 1,
+  group = 1
+)
+
 # Make a default map for the area
 plotMap <- ggplot( data=shapes$landCropDF, aes(x=Eastings, y=Northings) ) +
   geom_polygon( data=shapes$landCropDF, aes(group=group), fill="lightgrey" ) +
+  geom_polygon( data = FN_shape_2, fill = "red", alpha = 0.25, colour = NA ) +
   geom_path( data=shapes$regDF, aes(group=Region), size=0.75, 
     colour="black" ) +
   geom_path( data=shapes$spUnitDF, aes(group=SpUnit), size=0.25, 
