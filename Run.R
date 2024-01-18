@@ -148,7 +148,8 @@ isMajor <- regions[regions$Region ==spRegions,]$Major
 
 # Area shapefiles from FN: Tla'amin, A'Tlegay
 # FN_shape <- st_read(dsn = here("..", "Data", "FN", "Tlaamin"), quiet = TRUE)
-FN_shape <- st_read(dsn = here("..", "Data", "FN", "NationTerritories.kml"), quiet = TRUE)
+# FN_shape <- st_read(dsn = here("..", "Data", "FN", "NationTerritories.kml"), quiet = TRUE)
+FN_shape <- st_read(dsn = here("..", "Data", "FN", "Swiftsure"), quiet = TRUE)
 
 ##### Main ##### 
 
