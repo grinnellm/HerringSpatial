@@ -57,7 +57,7 @@ options(dplyr.summarise.inform = FALSE)
 ##### Controls #####
 
 # Select region(s): major (HG, PRD, CC, SoG, WCVI); or minor (A27, A2W)
-spRegions <- c( "All" )
+spRegions <- c( "CC" )
 
 # File name for dive transect XY
 diveFN <- file.path( "Data", "dive_transects_with_lat_long_June2_2017.xlsx" )
@@ -149,7 +149,7 @@ isMajor <- regions[regions$Region ==spRegions,]$Major
 # Area shapefiles from FN: Tla'amin, A'Tlegay
 # FN_shape <- st_read(dsn = here("..", "Data", "FN", "Tlaamin"), quiet = TRUE)
 # FN_shape <- st_read(dsn = here("..", "Data", "FN", "NationTerritories.kml"), quiet = TRUE)
-FN_shape <- st_read(dsn = here("..", "Data", "FN", "Swiftsure"), quiet = TRUE)
+# FN_shape <- st_read(dsn = here("..", "Data", "FN", "Swiftsure"), quiet = TRUE)
 
 ##### Main ##### 
 

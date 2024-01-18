@@ -815,26 +815,27 @@ if( exists("muLengthAge") ) {
           height=min(9, n_distinct(npAgedYear$SpUnit)*2+1) )
 }
 
-# Get spatial coordinates for FN shape
-FN_shape_coord <- FN_shape %>%
-  st_transform(crs = outCRS) %>%
-  st_coordinates()
-
-# Make FN shapefile into a data.frame
-FN_shape_2 <- tibble(
-  Eastings = FN_shape_coord[, "X"], 
-  Northings = FN_shape_coord[, "Y"],
-  order = 1:nrow(FN_shape_coord),
-  hole = FALSE,
-  piece = 1,
-  id = 1,
-  group = 1
-)
+# Check if FN shapefile exists
+if(exists("FN_shape")) {
+  # Get spatial coordinates for FN shape
+  FN_shape_coord <- FN_shape %>%
+    st_transform(crs = outCRS) %>%
+    st_coordinates()
+  # Make FN shapefile into a data.frame
+  FN_shape_2 <- tibble(
+    Eastings = FN_shape_coord[, "X"], 
+    Northings = FN_shape_coord[, "Y"],
+    order = 1:nrow(FN_shape_coord),
+    hole = FALSE,
+    piece = 1,
+    id = 1,
+    group = 1
+  )
+}
 
 # Make a default map for the area
 plotMap <- ggplot( data=shapes$landCropDF, aes(x=Eastings, y=Northings) ) +
   geom_polygon( data=shapes$landCropDF, aes(group=group), fill="lightgrey" ) +
-  geom_polygon( data = FN_shape_2, fill = "red", alpha = 0.25, colour = NA ) +
   geom_path( data=shapes$regDF, aes(group=Region), size=0.75, 
     colour="black" ) +
   geom_path( data=shapes$spUnitDF, aes(group=SpUnit), size=0.25, 
@@ -845,6 +846,11 @@ plotMap <- ggplot( data=shapes$landCropDF, aes(x=Eastings, y=Northings) ) +
   scale_y_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) +
   myTheme + 
   theme( text=element_text(size=18) )
+
+if(exists("FN_shape")) {
+  plotMap <- plotMap + 
+    geom_polygon( data = FN_shape_2, fill = "red", alpha = 0.25, colour = NA )
+}
 
 # Make the map: show spatial units
 mapSpUnits <- plotMap +
