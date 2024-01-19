@@ -503,6 +503,14 @@ siDecadeLoc <- siAll %>%
     SITotalMean=MeanNA(SITotal) ) %>%
   ungroup()
 
+# Get spawn index metrics by location code
+siLoc <- siAll %>%
+  group_by( SpUnit, LocationCode ) %>%
+  summarise( Number=length(unique(Year)),  # /unique(YrsDecade)
+             Eastings=unique(Eastings), Northings=unique(Northings),
+             SITotalMean=MeanNA(SITotal) ) %>%
+  ungroup()
+
 # Get spawn index metrics by survey
 siSurvey <- siAll %>%
   group_by( Survey, SpUnit, LocationCode ) %>%
@@ -965,6 +973,18 @@ PlotLocationsDecade <- function( dat, yVar ) {
 
 # Show spawn locations
 PlotLocationsDecade( dat=siDecadeLoc, yVar="SITotalMean" )
+
+# Show spawn index locations
+locPlot <- plotMap + 
+  geom_point( data = siLoc, aes_string(size = "Number", colour = "SITotalMean"),
+              alpha = 0.75) +
+  labs(size = "Frequency", colour = "Mean spawn\nindex (t)") +
+  scale_colour_viridis(labels = comma) +
+  scale_size(breaks = pretty_breaks(), guide = guide_legend(order = 2)) +
+  theme( legend.position = c(0.01, 0.99), legend.justification = c(0, 1),
+         legend.box = "horizontal" ) 
+ggsave( file = here(region, "Locations.png"), 
+        width = figWidth, height = figWidth/shapes$xyRatio+0.25 )
 
 # Plot spawn index vs spawn metric(s)
 ScatterSI <- function( df, yVar, siThresh=siThreshold, nYrs=nYrsConsec ) {
