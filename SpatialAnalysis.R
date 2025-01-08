@@ -157,28 +157,28 @@ if( spUnitName %in% c("Region", "StatArea", "Group", "Section") ) {
   # If spatial unit is region
   if( spUnitName == "Region" ) {
     # Make new data frames
-    shapes$spUnitDF <- shapes$regDF %>% rename( SpUnit=spUnitName ) 
-    shapes$spUnitCentDF <- shapes$regCentDF %>% 
-      rename( SpUnit=spUnitName ) %>%
-      filter( SpUnit == region )
+    shapes$spUnitDF <- shapes$regions %>% rename( SpUnit=spUnitName ) 
+    # shapes$spUnitCentDF <- shapes$regCentDF %>% 
+    #   rename( SpUnit=spUnitName ) %>%
+    #   filter( SpUnit == region )
   }  # End if statistical areas
   # If spatial unit is statistical areas
   if( spUnitName == "StatArea" ) {
     # Make new data frames
-    shapes$spUnitDF <- shapes$saDF %>% rename( SpUnit=spUnitName ) 
-    shapes$spUnitCentDF <- shapes$saCentDF %>% rename( SpUnit=spUnitName )
+    shapes$spUnitDF <- shapes$stat_areas %>% rename( SpUnit=spUnitName ) 
+    # shapes$spUnitCentDF <- shapes$saCentDF %>% rename( SpUnit=spUnitName )
   }  # End if statistical areas
   # If spatial unit is groups
   if( spUnitName == "Group" ) {
     # Make new data frames
-    shapes$spUnitDF <- shapes$grpDF %>% rename( SpUnit=spUnitName ) 
-    shapes$spUnitCentDF <- shapes$grpCentDF %>% rename( SpUnit=spUnitName )
+    shapes$spUnitDF <- shapes$groups %>% rename( SpUnit=spUnitName ) 
+    # shapes$spUnitCentDF <- shapes$grpCentDF %>% rename( SpUnit=spUnitName )
   }  # End if groups
   # If spatial unit is sections
   if( spUnitName == "Section" ) {
     # Make new data frames
-    shapes$spUnitDF <- shapes$secDF %>% rename( SpUnit=spUnitName ) 
-    shapes$spUnitCentDF <- shapes$secCentDF %>% rename( SpUnit=spUnitName )
+    shapes$spUnitDF <- shapes$sections %>% rename( SpUnit=spUnitName ) 
+    # shapes$spUnitCentDF <- shapes$secCentDF %>% rename( SpUnit=spUnitName )
   }  # End if groups
 } else {  # End if spatial units are defined, otherwise
   # Error
@@ -201,29 +201,30 @@ GetSI <- function( allSI, loc, XY ) {
     group_by( Decade ) %>%
     mutate( YrsDecade=length(unique(Year)) ) %>%
     ungroup( )
-  # Clip the extent
-  df <- ClipExtent( dat=raw, spObj=shapes$regSPDF, bufDist=maxBuff, 
-    silent=TRUE )
+  # # Clip the extent
+  # df <- ClipExtent( dat=raw, spObj=shapes$regions, bufDist=maxBuff, 
+  #   silent=TRUE )
   # Turn missing X and Y into NAs
-  df <- df %>%
-    mutate(Eastings = ifelse(Longitude == 0, NA, Eastings),
-           Northings = ifelse(Latitude == 0, NA, Northings))
+  # df <- df %>%
+  #   mutate(Eastings = ifelse(Longitude == 0, NA, Eastings),
+  #          Northings = ifelse(Latitude == 0, NA, Northings))
   # Subset data with 'good' X and Y
-  dfNotNA <- df %>%
-    filter( !is.na(Eastings) & !is.na(Northings) )
+  # dfNotNA <- df %>%
+  #   filter( !is.na(Eastings) & !is.na(Northings) )
   # Subset data with 'bad' X or Y, and try to fill in using transect X and Y
-  dfNA <- df %>%
-    filter( is.na(Eastings) | is.na(Northings) ) %>%
-    select( -Eastings, -Northings ) %>%
-    left_join( y=XY, by="LocationCode" )
+  # dfNA <- df %>%
+  #   filter( is.na(Eastings) | is.na(Northings) ) %>%
+  #   select( -Eastings, -Northings ) %>%
+  #   left_join( y=XY, by="LocationCode" )
   # Re-combine the two subsets
-  df2 <- bind_rows( dfNotNA, dfNA )
+  # df2 <- bind_rows( dfNotNA, dfNA )
   # Clip the extent (again)
-  res <- ClipExtent( dat=df2, spObj=shapes$regSPDF, bufDist=maxBuff )
+  # res <- ClipExtent( dat=df2, spObj=shapes$regSPDF, bufDist=maxBuff )
   # Stop if we're missing rows
-  if( nrow(raw) != nrow(res) )  stop( "Missing rows!", call.=FALSE )
+  # if( nrow(raw) != nrow(res) )  stop( "Missing rows!", call.=FALSE )
   # Return the spatial data
-  return( res )
+  # return( res )
+  return( raw )
 }  # End GetSI function
 
 # Get spawn index
@@ -480,6 +481,7 @@ allYrSpPA <- full_join( x=allYrSp, y=propAge, by=c("Year", "SpUnit") )
 
 # Get detailed layers infomation: spatial unit and type
 lyrsYrUnit <- siAll %>% 
+  as_tibble() %>%
   select( Year, SpUnit, SurfLyrs, MacroLyrs, UnderLyrs ) %>%
   gather( SurfLyrs, MacroLyrs, UnderLyrs, key="Type", value="Layers" ) %>%
   group_by( Year, SpUnit ) %>%
@@ -489,37 +491,43 @@ lyrsYrUnit <- siAll %>%
 
 # Get spawn index metrics by year and location
 siYearLoc <- siAll %>%
+  as_tibble() %>%
   group_by( Year, Survey, Decade, SpUnit, LocationCode ) %>%
   summarise( YrsDecade=unique(YrsDecade), YrsSurv=unique(YrsSurv), 
-    Eastings=unique(Eastings), Northings=unique(Northings),
+    # Eastings=unique(Eastings), Northings=unique(Northings),
     SITotal=SumNA(SITotal) ) %>%
   ungroup( )
 
 # Get spawn index metrics by decade and location code
 siDecadeLoc <- siAll %>%
+  as_tibble() %>%
   group_by( Decade, SpUnit, LocationCode ) %>%
   summarise( Number=length(unique(Year)),  # /unique(YrsDecade)
-    Eastings=unique(Eastings), Northings=unique(Northings),
+    # Eastings=unique(Eastings), Northings=unique(Northings),
     SITotalMean=MeanNA(SITotal) ) %>%
   ungroup()
 
 # Get spawn index metrics by location code
 siLoc <- siAll %>%
+  as_tibble() %>%
   group_by( SpUnit, LocationCode ) %>%
   summarise( Number=length(unique(Year)),  # /unique(YrsDecade)
-             Eastings=unique(Eastings), Northings=unique(Northings),
+             # Eastings=unique(Eastings), Northings=unique(Northings),
              SITotalMean=MeanNA(SITotal) ) %>%
   ungroup()
 
 # Get spawn index metrics by survey
 siSurvey <- siAll %>%
+  as_tibble() %>%
   group_by( Survey, SpUnit, LocationCode ) %>%
-  summarise( Number=length(unique(Year)),  # /unique(YrsSurv)
-    Eastings=unique(Eastings), Northings=unique(Northings) ) %>%
+  summarise( Number=length(unique(Year))  # /unique(YrsSurv)
+    # Eastings=unique(Eastings), Northings=unique(Northings)
+    ) %>%
   ungroup( )
 
 # Get spawn index by survey method
 siMethod <- siAll %>%
+  as_tibble() %>%
   filter( Method %in% c("Surface", "Dive") ) %>%
   group_by( Year, SpUnit, Method ) %>%
   summarise( SITotal=SumNA(SITotal), Survey=unique(Survey) ) %>%
@@ -538,6 +546,7 @@ siMethod <- siAll %>%
 
 # Calculate weighted mean spawn index (spatial) by year
 siWeightedYear <- siAll %>%
+  as_tibble() %>%
   group_by( Year ) %>%
   summarise( Eastings=WtMeanNA(x=Eastings, w=SITotal),
     Northings=WtMeanNA(x=Northings, w=SITotal),
@@ -655,26 +664,26 @@ spawnProps <- ProportionSpawn( dat=siYrSp )
 ##### Figures #####
 
 # Plot the BC coast and regions
-if( reg == 1 ) {
-  BCMap <- ggplot( data=shapes$landAllCropDF, aes(x=Eastings, y=Northings) ) +
-    geom_polygon( data=shapes$landAllCropDF, aes(group=group), 
-                  fill="lightgrey" ) +
-    geom_point( data=shapes$extAllDF, colour="transparent" ) +
-    geom_path( data=shapes$regAllDF, aes(group=Region), size=0.75, 
-               colour="black" ) + 
-    geom_label( data=shapes$regCentDF, alpha=0.5, aes(label=Region) ) +
-    annotate( geom="text", x=1100000, y=800000, label="British\nColumbia",
-              size=5 ) +
-    annotate( geom="text", x=650000, y=550000, label="Pacific\nOcean", 
-              size=5 ) +
-    coord_equal( ) +
-    labs( x="Eastings (km)", y="Northings (km)", caption=geoProj ) +
-    scale_x_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) + 
-    scale_y_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) +
-    myTheme
-  ggsave( filename=file.path("BC.png"), width=figWidth, 
-          height=7/shapes$xyAllRatio )
-}
+# if( reg == 1 ) {
+#   BCMap <- ggplot( data=shapes$landAllCropDF, aes(x=Eastings, y=Northings) ) +
+#     geom_polygon( data=shapes$landAllCropDF, aes(group=group), 
+#                   fill="lightgrey" ) +
+#     geom_point( data=shapes$extAllDF, colour="transparent" ) +
+#     geom_path( data=shapes$regAllDF, aes(group=Region), linewidth=0.75, 
+#                colour="black" ) + 
+#     geom_label( data=shapes$regCentDF, alpha=0.5, aes(label=Region) ) +
+#     annotate( geom="text", x=1100000, y=800000, label="British\nColumbia",
+#               size=5 ) +
+#     annotate( geom="text", x=650000, y=550000, label="Pacific\nOcean", 
+#               size=5 ) +
+#     coord_equal( ) +
+#     labs( x="Eastings (km)", y="Northings (km)", caption=geoProj ) +
+#     scale_x_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) + 
+#     scale_y_continuous( labels=function(x) comma(x/1000), expand=c(0, 0) ) +
+#     myTheme
+#   ggsave( filename=file.path("BC.png"), width=figWidth, 
+#           height=7/shapes$xyAllRatio )
+# }
 
 # Function to plot the data
 PlotPairs <- function( dat, sub ) {
@@ -725,8 +734,8 @@ PlotSIEtAl <- function( dat1, dat2, dat3, siThresh=siThreshold,
     # Plot spawn index (1)
     siPlot <- ggplot( dat=df1, aes(x=Year, y=SITotal) ) +
       geom_path( aes(group=Survey) ) +
-      geom_point( aes(shape=Survey), size=2.5 ) +
-      geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+      geom_point( aes(shape=Survey), size = 2.5 ) +
+      geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth = 0.25 ) +
       scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
       scale_y_continuous( labels=comma ) +
       expand_limits( x=yrRange, y=siRange ) +
@@ -737,7 +746,7 @@ PlotSIEtAl <- function( dat1, dat2, dat3, siThresh=siThreshold,
       theme( axis.text.x=element_blank(), text=element_text(size=24) )
     # Add the reference line if supplied
     if( !is.na(siThresh) )  siPlot <- siPlot + 
-      geom_hline( yintercept=siThresh, linetype="dashed", size=0.5 )
+      geom_hline( yintercept=siThresh, linetype="dashed", linewidth=0.5 )
     # Plot proportion at age (2)
     paPlot <- ggplot( data=df2, aes(x=Year, y=Proportion) ) +
       scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
@@ -794,7 +803,7 @@ ggsave( filename=file.path(region, "AgeBubbles.png"), width=figWidth,
 # Plot weight-at-age by year (if data exist)
 if( exists("muWeightAge") ) { 
   weightAgePlot <- ggplot( data=muWeightAge ) +
-    geom_line( aes(x=Year, y=muWeight, group=Age, colour=Age), size=1 ) +
+    geom_line( aes(x=Year, y=muWeight, group=Age, colour=Age), linewidth=1 ) +
     scale_colour_viridis( guide=guide_legend(nrow=1), discrete=TRUE ) +
     labs( y="Weight-at-age (g)" ) +
     scale_x_continuous( breaks=yrBreaks ) +
@@ -810,7 +819,7 @@ if( exists("muWeightAge") ) {
 # Plot length-at-age by year
 if( exists("muLengthAge") ) {
   lengthAgePlot <- ggplot( data=muLengthAge ) +
-    geom_line( aes(x=Year, y=muLength, group=Age, colour=Age), size=1 ) +
+    geom_line( aes(x=Year, y=muLength, group=Age, colour=Age), linewidth=1 ) +
     scale_colour_viridis( guide=guide_legend(nrow=1), discrete=TRUE ) +
     labs( y="Length-at-age (mm)" ) +
     scale_x_continuous( breaks=yrBreaks ) +
@@ -844,9 +853,9 @@ if(exists("FN_shape")) {
 # Make a default map for the area
 plotMap <- ggplot( data=shapes$landCropDF, aes(x=Eastings, y=Northings) ) +
   geom_polygon( data=shapes$landCropDF, aes(group=group), fill="lightgrey" ) +
-  geom_path( data=shapes$regDF, aes(group=Region), size=0.75, 
+  geom_path( data=shapes$regDF, aes(group=Region), linewidth=0.75, 
     colour="black" ) +
-  geom_path( data=shapes$spUnitDF, aes(group=SpUnit), size=0.25, 
+  geom_path( data=shapes$spUnitDF, aes(group=SpUnit), linewidth=0.25, 
     colour="black" ) +
   coord_equal( ) +
   labs( x="Eastings (km)", y="Northings (km)", caption=geoProj ) +
@@ -1065,7 +1074,7 @@ TimeseriesSI <- function( df, yVar, siThresh=siThreshold, nYrs=nYrsConsec ) {
     tsSI <- ggplot( data=dat, aes(x=Year, y=SITotal) ) +
       geom_path( aes(group=Survey) ) +
       geom_point( aes(shape=Survey), size=2.5 ) +
-      geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+      geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth=0.25 ) +
       scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
       scale_y_continuous( labels=comma ) +
       expand_limits( x=yrRange, y=siRange ) +
@@ -1076,12 +1085,12 @@ TimeseriesSI <- function( df, yVar, siThresh=siThreshold, nYrs=nYrsConsec ) {
       theme( axis.text.x=element_blank(), text=element_text(size=28) )
     # Add the reference line if supplied
     if( !is.na(siThresh) )  tsSI <- tsSI + 
-      geom_hline( yintercept=siThresh, linetype="dashed", size=0.5 )
+      geom_hline( yintercept=siThresh, linetype="dashed", linewidth=0.5 )
     # The second timeseries
     ts2 <- ggplot( data=dat, aes_string(x="Year", y=yVar) ) +
       geom_path( aes(group=Survey) ) +
       geom_point( aes(shape=Survey), size=2.5 ) +
-      geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+      geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth=0.25 ) +
       scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
       scale_y_continuous( labels=comma ) +
       expand_limits( x=yrRange, y=yRange ) +
@@ -1185,7 +1194,7 @@ if( region == "SoG" & spUnitName == "Group" ) {
 siPlot <- ggplot( data=allYrSp, #filter(allYrSp, !is.na(Survey)), 
   aes(x=Year, group=Survey) ) +
   # geom_ribbon( aes(ymin=BiomassLower, ymax=BiomassUpper), fill="lightgrey" ) +
-  geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+  geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth=0.25 ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   scale_y_continuous( labels=comma ) +
   # scale_y_continuous( labels=function(x) comma(x/1000) ) +
@@ -1262,7 +1271,7 @@ siBarplot <- ggplot( data=siYrSpProp, aes(x=Year, y=SITotal) ) +
   geom_col( aes(fill=SpUnit) ) + 
   labs( y=expression(paste("Spawning biomass (t"%*%10^3, ")", sep="")), 
         fill=NULL ) +
-  geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+  geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth=0.25 ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   scale_y_continuous( labels=function(x) comma(x/1000) ) +
   expand_limits( x=yrRange ) +
@@ -1284,7 +1293,7 @@ PlotSIBarProp <- function( df ) {
   plot1 <- ggplot( data=dfAgg, aes(x=Year, y=SITotal, group=Survey) ) +
     geom_path( aes(y=SITotal) ) +
     geom_point( aes(y=SITotal, shape=Survey) ) +
-    geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+    geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth=0.25 ) +
     scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
     scale_y_continuous( labels=function(x) comma(x/1000) ) +
     labs( y=expression(paste("Spawning biomass (t"%*%10^3, ")", sep="")),
@@ -1297,7 +1306,7 @@ PlotSIBarProp <- function( df ) {
   plot2 <- ggplot( data=df, aes(x=Year, y=Proportion) ) +
     geom_col( aes(fill=SpUnit) ) + 
     labs( y="Spawning biomass (proportion)", fill=NULL ) +
-    geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+    geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth=0.25 ) +
     scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
     expand_limits( x=yrRange ) +
     myTheme +
@@ -1333,7 +1342,7 @@ ggsave( file=file.path(region, "WeightedMeanSpawnIndex.png"),
 # Spawn timing by year and spatial unit
 timingPlot <- ggplot( data=filter(siAllLong, !is.na(Survey)), aes(x=Year) ) +
   geom_point( aes(y=Date, shape=Survey, colour=Timing), alpha=0.5 ) +
-  geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+  geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth=0.25 ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   expand_limits( x=yrRange ) +
   labs( y="Date" ) +
@@ -1346,7 +1355,7 @@ ggsave( filename=file.path(region, "SpawnTiming.png"),
 # Annual spawn index by method and spatial unit
 methodPlot <- ggplot( data=siMethod, aes(x=Year, y=SITotal) ) +
   geom_bar( aes(fill=Method), stat="identity", width=1 ) + 
-  geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", size=0.25 ) +
+  geom_vline( xintercept=newSurvYr-0.5, linetype="dashed", linewidth=0.25 ) +
   scale_x_continuous( breaks=seq(from=1000, to=3000, by=10) ) +
   scale_y_continuous( labels=function(x) comma(x/1000) ) +
   labs( y=expression(paste("Spawning biomass (t"%*%10^3, ")", sep="")) ) +
